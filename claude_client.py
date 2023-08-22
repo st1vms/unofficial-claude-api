@@ -328,9 +328,11 @@ class ClaudeAPIClient:
     ) -> str | None:
         url = f"{self.__BASE_URL}/api/append_message"
 
+        attachments = [attachment_content] if attachment_content else []
+
         payload = json.dumps(
             {
-                "attachments": [attachment_content],
+                "attachments": attachments,
                 "completion": {
                     "model": "claude-2",
                     "prompt": f"{prompt}",
@@ -429,7 +431,7 @@ class ClaudeAPIClient:
             return None
 
     def send_text_message(
-        self, chat_id: str, prompt: str, attachment_path: str = None, timeout: int = 240
+        self, chat_id: str, prompt: str, attachment_path: str = "", timeout: int = 240
     ) -> str | None:
         """
         Send message to chat_id using specified prompt, loading attachment if present.
@@ -437,14 +439,19 @@ class ClaudeAPIClient:
 
         Only supports textual attachments, for other file formats, use send_file_message()
         """
-        if not os.path.exists(attachment_path) or not os.path.isfile(attachment_path):
+        if attachment_path and (
+            not os.path.exists(attachment_path) or not os.path.isfile(attachment_path)
+        ):
             raise ValueError(f"\nInvalid attachment path -> {attachment_path}")
 
-        attachment_content = self.__prepare_text_file_attachment(attachment_path)
+        attachment_content = None
+        if attachment_path:
+            attachment_content = self.__prepare_text_file_attachment(attachment_path)
+
         return self.__send_message(chat_id, prompt, attachment_content, timeout=timeout)
 
     def send_file_message(
-        self, chat_id: str, prompt: str, attachment_path: str = None, timeout: int = 240
+        self, chat_id: str, prompt: str, attachment_path: str = "", timeout: int = 240
     ) -> str | None:
         """
         Send message to chat_id using specified prompt, loading attachment if present.
@@ -452,10 +459,14 @@ class ClaudeAPIClient:
 
         For text files use send_text_message(), for any other file type, use this function instead
         """
-        if not os.path.exists(attachment_path) or not os.path.isfile(attachment_path):
+        if attachment_path and (
+            not os.path.exists(attachment_path) or not os.path.isfile(attachment_path)
+        ):
             raise ValueError(f"\nInvalid attachment path -> {attachment_path}")
 
-        attachment_content = self.__prepare_other_file_attachment(attachment_path)
+        attachment_content = None
+        if attachment_path:
+            attachment_content = self.__prepare_other_file_attachment(attachment_path)
         return self.__send_message(chat_id, prompt, attachment_content, timeout=timeout)
 
     def get_chat_data(self, chat_id: str) -> dict:
