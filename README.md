@@ -1,1 +1,92 @@
-# Unofficial Claude2 API
+<a href="https://www.buymeacoffee.com/st1vms"><img src="https://img.buymeacoffee.com/button-api/?text=1 Pizza Margherita&emoji=🍕&slug=st1vms&button_colour=0fa913&font_colour=ffffff&font_family=Bree&outline_colour=ffffff&coffee_colour=FFDD00" width="200" height="50" style="max-width:100%;"/></a>
+
+# unofficial-claude2-api
+
+Claude2 unofficial API supporting direct HTTP chat creation/deletion/retrieval,
+message attachments and auto session gathering using Firefox with geckodriver.
+
+## How to install
+
+Download and move to the repository folder using a terminal, and execute this command:
+```
+pip install -e .
+```
+
+## Uninstallation
+```
+pip uninstall unofficial-claude2-api
+```
+
+## (Optional) Requirements
+#### These requirements are needed to auto retrieve session cookie and UserAgent using selenium
+ - Firefox installed, and with at least one profile logged into [Claude](https://claude.ai/chats).
+
+ - [geckodriver](https://github.com/mozilla/geckodriver/releases) installed inside a folder registered in PATH environment variable.
+
+_______
+
+## Example Usage
+
+```python
+from claude_client import (
+    ClaudeAPIClient,
+    get_session_data,
+    MessageRateLimitHit,
+)
+import time
+
+# Delay period between subsequent requests
+BACKOFF_DELAY_SECONDS = 60
+
+TEXT_FILEPATH = "test.txt"
+
+PDF_FILEPATH = "test.pdf"
+
+# This function will automatically retrieve a SessionData instance using selenium
+# Omitting profile argument will use default Firefox profile
+data = get_session_data()
+
+# Initialize a client instance using a session
+client = ClaudeAPIClient(data)
+
+# Create a new chat and cache the chat_id
+chat_id = client.create_chat()
+
+try:
+    # Used for textual file attachment
+    answer = client.send_text_message(
+        chat_id, "Hello!", attachment_path=TEXT_FILEPATH, timeout=240
+    )
+    print(answer)
+except MessageRateLimitHit as e:
+    print(f"\nMessage limit hit, resets at {e.resetDate}")
+    print(f"\n{e.sleep_sec} seconds left until -> {e.resetTimestamp}")
+    quit()
+finally:
+    # Perform chat deletion for cleanup
+    client.delete_chat(chat_id)
+
+# Delay to avoid possible rate limit errors
+time.sleep(BACKOFF_DELAY_SECONDS)
+
+# Create another chat for another message
+chat_id = client.create_chat()
+try:
+    # This is used for other attachments file types
+    answer = client.send_file_message(
+        chat_id, "Hello!", attachment_path=PDF_FILEPATH, timeout=240
+    )
+    print(answer)
+except MessageRateLimitHit as e:
+    print(f"\nMessage limit hit, resets at {e.resetDate}")
+    print(f"\n{e.sleep_sec} seconds left until -> {e.resetTimestamp}")
+    quit()
+finally:
+    client.delete_chat(chat_id)
+
+# Get a list of all chats ids
+all_chat_ids = client.get_all_chat_ids()
+# Delete all chats
+for chat in all_chat_ids:
+    client.delete_chat(chat)
+```
