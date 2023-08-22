@@ -1,0 +1,4 @@
+requests
+selenium
+screeninfo
+tzlocal
