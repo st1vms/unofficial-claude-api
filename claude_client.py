@@ -457,3 +457,23 @@ class ClaudeAPIClient:
 
         attachment_content = self.__prepare_other_file_attachment(attachment_path)
         return self.__send_message(chat_id, prompt, attachment_content, timeout=timeout)
+
+    def get_chat_data(self, chat_id: str) -> dict:
+        """
+        Print JSON response from calling /api/organizations/{organization_id}/chat_conversations/{chat_id}
+        """
+        url = f"{self.__BASE_URL}/api/organizations/{self.organization_id}/chat_conversations/{chat_id}"
+
+        headers = {
+            "User-Agent": self.__session.user_agent,
+            "Accept-Language": "en-US,en;q=0.5",
+            "Referer": f"{self.__BASE_URL}/chats/{chat_id}",
+            "Content-Type": "application/json",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            "Connection": "keep-alive",
+            "Cookie": f"{self.__session.cookie}",
+        }
+
+        return requests.get(url, headers=headers).json()
