@@ -283,6 +283,32 @@ class ClaudeAPIClient:
         response = requests.delete(url, headers=headers, data=payload)
         return response.status_code == 204
 
+    def get_all_chat_ids(self) -> list[str]:
+        url = f"{self.__BASE_URL}/api/organizations/{self.organization_id}/chat_conversations"
+
+        headers = {
+            "User-Agent": self.__session.user_agent,
+            "Accept-Language": "en-US,en;q=0.5",
+            "Referer": f"{self.__BASE_URL}/chats",
+            "Content-Type": "application/json",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            "Connection": "keep-alive",
+            "Cookie": f"{self.__session.session_key}",
+        }
+
+        response = requests.get(url, headers=headers)
+        chats = []
+        if response.status_code == 200:
+            j = response.json()
+            if j:
+                for chat in j:
+                    if "uuid" in chat:
+                        chats.append(chat["uuid"])
+
+        return chats
+
     def __prepare_text_file_attachment(self, file_path: str) -> dict:
         file_name = os.path.basename(file_path)
         file_size = os.path.getsize(file_path)
@@ -297,35 +323,14 @@ class ClaudeAPIClient:
             "file_type": "text/plain",
         }
 
-    def send_message(
-        self, chat_id: str, prompt: str, attachment_path: str = None, timeout: int = 240
+    def __send_message(
+        self, chat_id: str, prompt: str, attachment_content, timeout: int = 240
     ) -> str | None:
-        """
-        Send message to chat_id using specified prompt, loading attachment if present.
-        Returns answer string if successfull, None otherwise.
-        """
         url = f"{self.__BASE_URL}/api/append_message"
-
-        attachments = []
-        if attachment_path:
-            if not os.path.exists(attachment_path) or not os.path.isfile(
-                attachment_path
-            ):
-                print(f"\nAttachment {attachment_path} does not exist!")
-            else:
-                try:
-                    attachment_content = self.__prepare_text_file_attachment(
-                        attachment_path
-                    )
-                except Exception as e:
-                    print(f"\nSkipping attachment, reason is -> {str(e)}")
-                else:
-                    if attachment_content:
-                        attachments = [attachment_content]
 
         payload = json.dumps(
             {
-                "attachments": attachments,
+                "attachments": [attachment_content],
                 "completion": {
                     "model": "claude-2",
                     "prompt": f"{prompt}",
@@ -385,28 +390,70 @@ class ClaudeAPIClient:
             )
         return answer
 
-    def get_all_chat_ids(self) -> list[str]:
-        url = f"{self.__BASE_URL}/api/organizations/{self.organization_id}/chat_conversations"
+    def __get_content_type(self, fpath: str):
+        extension = os.path.splitext(fpath)[1].lower()
+        if extension == ".pdf":
+            return "application/pdf"
+        elif extension == ".csv":
+            return "text/csv"
+        else:
+            return "application/octet-stream"
+
+    def __prepare_other_file_attachment(self, fpath: str) -> dict:
+        url = f"{self.__BASE_URL}/api/convert_document"
 
         headers = {
             "User-Agent": self.__session.user_agent,
             "Accept-Language": "en-US,en;q=0.5",
+            "Content-Length": f"{os.path.getsize(fpath)}",
+            "Host": "claude.ai",
             "Referer": f"{self.__BASE_URL}/chats",
-            "Content-Type": "application/json",
+            "Origin": f"{self.__BASE_URL}",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
             "Connection": "keep-alive",
-            "Cookie": f"{self.__session.session_key}",
+            "Cookie": f"{self.__session.cookie}",
+            "TE": "trailers",
         }
 
-        response = requests.get(url, headers=headers)
-        chats = []
-        if response.status_code == 200:
-            j = response.json()
-            if j:
-                for chat in j:
-                    if "uuid" in chat:
-                        chats.append(chat["uuid"])
+        with open(fpath, "rb") as fp:
+            files = {
+                "file": (os.path.basename(fpath), fp, self.__get_content_type(fpath)),
+                "orgUuid": (None, self.organization_id),
+            }
 
-        return chats
+            response = requests.post(url, headers=headers, files=files)
+            if response.status_code == 200:
+                return response.json()
+            return None
+
+    def send_text_message(
+        self, chat_id: str, prompt: str, attachment_path: str = None, timeout: int = 240
+    ) -> str | None:
+        """
+        Send message to chat_id using specified prompt, loading attachment if present.
+        Returns answer string if successfull, None otherwise.
+
+        Only supports textual attachments, for other file formats, use send_file_message()
+        """
+        if not os.path.exists(attachment_path) or not os.path.isfile(attachment_path):
+            raise ValueError(f"\nInvalid attachment path -> {attachment_path}")
+
+        attachment_content = self.__prepare_text_file_attachment(attachment_path)
+        return self.__send_message(chat_id, prompt, attachment_content, timeout=timeout)
+
+    def send_file_message(
+        self, chat_id: str, prompt: str, attachment_path: str = None, timeout: int = 240
+    ) -> str | None:
+        """
+        Send message to chat_id using specified prompt, loading attachment if present.
+        Returns answer string if successfull, None otherwise.
+
+        For text files use send_text_message(), for any other file type, use this function instead
+        """
+        if not os.path.exists(attachment_path) or not os.path.isfile(attachment_path):
+            raise ValueError(f"\nInvalid attachment path -> {attachment_path}")
+
+        attachment_content = self.__prepare_other_file_attachment(attachment_path)
+        return self.__send_message(chat_id, prompt, attachment_content, timeout=timeout)
