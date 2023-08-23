@@ -15,6 +15,7 @@ setup(
     author_email="stefano.maria.salvatore@gmail.com",
     description=__DESCRIPTION,
     long_description=__LONG_DESCRIPTION,
+    long_description_content_type="text/markdown",
     url="https://github.com/st1vms/unofficial-claude2-api",
     packages=find_packages(),
     classifiers=[
