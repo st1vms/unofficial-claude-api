@@ -46,13 +46,14 @@ client = ClaudeAPIClient(data)
 chat_id = client.create_chat()
 
 try:
-    # Used for textual file attachment
+    # Used for sending message with or without attachment
     answer = client.send_message(
         chat_id, "Hello!", attachment_path=FILEPATH, timeout=240
     )
     # May return None, in that case, delay a bit and retry
     print(answer)
 except MessageRateLimitHit as e:
+    # The exception will hold these informations about the rate limit:
     print(f"\nMessage limit hit, resets at {e.resetDate}")
     print(f"\n{e.sleep_sec} seconds left until -> {e.resetTimestamp}")
     quit()
