@@ -6,6 +6,7 @@ import shutil
 import platform
 import requests
 import screeninfo
+import mimetypes
 import selenium
 from time import time
 from datetime import datetime
@@ -124,10 +125,6 @@ class SessionData:
     will use the default firefox profile to fill this structure.
     """
 
-    session_key: str
-    """
-    Cookie string named 'sessionKey'
-    """
     cookie: str
     """
     The entire Cookie header string value
@@ -138,17 +135,20 @@ class SessionData:
     """
 
 
-def get_session_data(profile: str = "") -> SessionData | None:
+def get_session_data(profile: str = "", quiet: bool = False) -> SessionData | None:
     """
     Retrieve Claude session data using existing Firefox profile.
     This function requires geckodriver installed!
     The default Firefox profile will be used, if the profile argument was not overwrited.
     """
+
     __BASE_CHAT_URL = "https://claude.ai/chats"
     if not profile:
         profile = __get_default_firefox_profile()
 
-    print(f"\nRetrieving {__BASE_CHAT_URL} session cookie from {profile}")
+    if not quiet:
+        print(f"\nRetrieving {__BASE_CHAT_URL} session cookie from {profile}")
+
     __cleanup_resources()
     opts = __get_firefox_options(firefox_profile=profile, headless=True)
     driver = __get_firefox_webdriver(options=opts)
@@ -159,15 +159,11 @@ def get_session_data(profile: str = "") -> SessionData | None:
             raise RuntimeError("\nCannot retrieve UserAgent...")
 
         cookies = driver.get_cookies()
-        for cookie in cookies:
-            if cookie["name"] == "sessionKey":
-                session_key = f"{cookie['name']}={cookie['value']}"
-                break
 
         cookie_string = "; ".join(
             [f"{cookie['name']}={cookie['value']}" for cookie in cookies]
         )
-        return SessionData(session_key, cookie_string, user_agent)
+        return SessionData(cookie_string, user_agent)
     finally:
         driver.quit()
         __cleanup_resources()
@@ -210,15 +206,16 @@ class ClaudeAPIClient:
         url = f"{self.__BASE_URL}/api/organizations"
 
         headers = {
-            "User-Agent": self.__session.user_agent,
             "Accept-Language": "en-US,en;q=0.5",
-            "Referer": f"{self.__BASE_URL}/chats",
             "Content-Type": "application/json",
+            "Referer": f"{self.__BASE_URL}/chats",
+            "Cookie": self.__session.cookie,
+            "DNT": "1",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
             "Connection": "keep-alive",
-            "Cookie": f"{self.__session.session_key}",
+            "User-Agent": self.__session.user_agent,
         }
 
         response = requests.get(url, headers=headers)
@@ -227,6 +224,59 @@ class ClaudeAPIClient:
             if res and "uuid" in res[0]:
                 return res[0]["uuid"]
         raise RuntimeError("Cannot retrieve Organization ID!")
+
+    def __prepare_text_file_attachment(self, file_path: str) -> dict:
+        file_name = os.path.basename(file_path)
+        file_size = os.path.getsize(file_path)
+
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
+            file_content = file.read()
+
+        return {
+            "extracted_content": file_content,
+            "file_name": file_name,
+            "file_size": f"{file_size}",
+            "file_type": "text/plain",
+        }
+
+    def __get_content_type(self, fpath: str):
+        extension = os.path.splitext(fpath)[1].lower()
+        mime_type, _ = mimetypes.guess_type(f"file.{extension}")
+        return mime_type or "application/octet-stream"
+
+    def __prepare_file_attachment(self, fpath: str) -> dict:
+        content_type = self.__get_content_type(fpath)
+        if content_type == "text/plain":
+            return self.__prepare_text_file_attachment(fpath)
+
+        url = f"{self.__BASE_URL}/api/convert_document"
+
+        headers = {
+            "Accept-Language": "en-US,en;q=0.5",
+            "Content-Length": f"{os.path.getsize(fpath)}",
+            "Host": "claude.ai",
+            "Origin": self.__BASE_URL,
+            "Referer": f"{self.__BASE_URL}/chats",
+            "Cookie": self.__session.cookie,
+            "DNT": "1",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            "Connection": "keep-alive",
+            "TE": "trailers",
+            "User-Agent": self.__session.user_agent,
+        }
+
+        with open(fpath, "rb") as fp:
+            files = {
+                "file": (os.path.basename(fpath), fp, self.__get_content_type(fpath)),
+                "orgUuid": (None, self.organization_id),
+            }
+
+            response = requests.post(url, headers=headers, files=files)
+            if response.status_code == 200:
+                return response.json()
+            return None
 
     def create_chat(self) -> str | None:
         """
@@ -237,18 +287,18 @@ class ClaudeAPIClient:
 
         payload = json.dumps({"uuid": new_uuid, "name": ""})
         headers = {
-            "User-Agent": self.__session.user_agent,
             "Accept-Language": "en-US,en;q=0.5",
-            "Referer": f"{self.__BASE_URL}/chats",
             "Content-Type": "application/json",
-            "Origin": f"{self.__BASE_URL}",
+            "Origin": self.__BASE_URL,
+            "Referer": f"{self.__BASE_URL}/chats",
+            "Cookie": self.__session.cookie,
             "DNT": "1",
-            "Connection": "keep-alive",
-            "Cookie": self.__session.session_key,
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
+            "Connection": "keep-alive",
             "TE": "trailers",
+            "User-Agent": self.__session.user_agent,
         }
 
         response = requests.post(url, headers=headers, data=payload)
@@ -266,18 +316,19 @@ class ClaudeAPIClient:
 
         payload = json.dumps(chat_id)
         headers = {
-            "User-Agent": self.__session.user_agent,
             "Accept-Language": "en-US,en;q=0.5",
             "Content-Type": "application/json",
             "Content-Length": f"{len(payload)}",
+            "Origin": self.__BASE_URL,
             "Referer": f"{self.__BASE_URL}/chats",
-            "Origin": f"{self.__BASE_URL}",
+            "Cookie": self.__session.cookie,
+            "DNT": "1",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
             "Connection": "keep-alive",
-            "Cookie": f"{self.__session.session_key}",
             "TE": "trailers",
+            "User-Agent": self.__session.user_agent,
         }
 
         response = requests.delete(url, headers=headers, data=payload)
@@ -287,79 +338,100 @@ class ClaudeAPIClient:
         url = f"{self.__BASE_URL}/api/organizations/{self.organization_id}/chat_conversations"
 
         headers = {
-            "User-Agent": self.__session.user_agent,
             "Accept-Language": "en-US,en;q=0.5",
+            "Content-Type": "application/json",
             "Referer": f"{self.__BASE_URL}/chats",
+            "Cookie": self.__session.cookie,
+            "DNT": "1",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            "Connection": "keep-alive",
+            "User-Agent": self.__session.user_agent,
+        }
+
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            j = response.json()
+            return [chat["uuid"] for chat in j if "uuid" in chat]
+
+        return []
+
+    def get_chat_data(self, chat_id: str) -> dict:
+        """
+        Print JSON response from calling /api/organizations/{organization_id}/chat_conversations/{chat_id}
+        """
+        url = f"{self.__BASE_URL}/api/organizations/{self.organization_id}/chat_conversations/{chat_id}"
+
+        headers = {
+            "Accept-Language": "en-US,en;q=0.5",
+            "Referer": f"{self.__BASE_URL}/chats/{chat_id}",
+            "Cookie": self.__session.cookie,
             "Content-Type": "application/json",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
             "Connection": "keep-alive",
-            "Cookie": f"{self.__session.session_key}",
+            "User-Agent": self.__session.user_agent,
         }
 
-        response = requests.get(url, headers=headers)
-        chats = []
-        if response.status_code == 200:
-            j = response.json()
-            if j:
-                for chat in j:
-                    if "uuid" in chat:
-                        chats.append(chat["uuid"])
+        return requests.get(url, headers=headers).json()
 
-        return chats
-
-    def __prepare_text_file_attachment(self, file_path: str) -> dict:
-        file_name = os.path.basename(file_path)
-        file_size = os.path.getsize(file_path)
-
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
-            file_content = file.read()
-
-        return {
-            "extracted_content": file_content,
-            "file_name": file_name,
-            "file_size": f"{file_size}",
-            "file_type": "text/plain",
-        }
-
-    def __send_message(
-        self, chat_id: str, prompt: str, attachment_content, timeout: int = 240
+    def send_message(
+        self,
+        chat_id: str,
+        prompt: str,
+        attachment_path: str = "",
+        timeout: int = 240,
+        quiet: bool = False,
     ) -> str | None:
-        url = f"{self.__BASE_URL}/api/append_message"
+        """
+        Send message to chat_id using specified prompt, loading attachment if present.
+        Returns answer string if successfull, None otherwise.
 
-        attachments = [attachment_content] if attachment_content else []
+        For text files use send_text_message(), for any other file type, use this function instead
+        """
+        if attachment_path and (
+            not os.path.exists(attachment_path) or not os.path.isfile(attachment_path)
+        ):
+            raise ValueError(f"\nInvalid attachment path -> {attachment_path}")
+
+        attachment = []
+        if attachment_path:
+            attachment = [self.__prepare_file_attachment(attachment_path)]
+
+        url = f"{self.__BASE_URL}/api/append_message"
 
         payload = json.dumps(
             {
-                "attachments": attachments,
+                "attachments": attachment,
                 "completion": {
                     "model": "claude-2",
-                    "prompt": f"{prompt}",
+                    "prompt": prompt,
                     "timezone": f"{self.__timezone}",
                 },
-                "conversation_uuid": f"{chat_id}",
+                "conversation_uuid": chat_id,
                 "organization_uuid": f"{self.organization_id}",
-                "text": f"{prompt}",
+                "text": prompt,
             }
         )
 
         headers = {
-            "User-Agent": self.__session.user_agent,
             "Accept": "text/event-stream, text/event-stream",
             "Accept-Language": "en-US,en;q=0.5",
             "Accept-Encoding": "gzip, deflate, br",
-            "Referer": f"{self.__BASE_URL}/chat/{chat_id}",
             "Content-Type": "application/json",
             "Content-Length": f"{len(payload)}",
-            "Origin": f"{self.__BASE_URL}",
+            "Origin": self.__BASE_URL,
+            "Referer": f"{self.__BASE_URL}/chat/{chat_id}",
+            "Cookie": self.__session.cookie,
             "DNT": "1",
-            "Connection": "keep-alive",
-            "Cookie": f"{self.__session.cookie}",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
+            "Connection": "keep-alive",
             "TE": "trailers",
+            "User-Agent": self.__session.user_agent,
         }
 
         response = requests.post(url, headers=headers, data=payload, timeout=timeout)
@@ -382,109 +454,8 @@ class ClaudeAPIClient:
             data = json.loads(decoded_data)
             if data and "error" in data and "resets_at" in data["error"]:
                 raise MessageRateLimitHit(int(data["error"]["resets_at"]))
-        elif response.status_code == 403:
+        elif not quiet:
             print(
-                f"\nGot {response.status_code} error, either no messages left or a network error!"
-            )
-        else:
-            print(
-                f"\nGot {response.status_code}, response -> {response.content.decode('utf-8')}"
+                f"\nGot unexpected status code -> {response.status_code}\nResponse: {response.content.decode('utf-8')}"
             )
         return answer
-
-    def __get_content_type(self, fpath: str):
-        extension = os.path.splitext(fpath)[1].lower()
-        if extension == ".pdf":
-            return "application/pdf"
-        elif extension == ".csv":
-            return "text/csv"
-        else:
-            return "application/octet-stream"
-
-    def __prepare_other_file_attachment(self, fpath: str) -> dict:
-        url = f"{self.__BASE_URL}/api/convert_document"
-
-        headers = {
-            "User-Agent": self.__session.user_agent,
-            "Accept-Language": "en-US,en;q=0.5",
-            "Content-Length": f"{os.path.getsize(fpath)}",
-            "Host": "claude.ai",
-            "Referer": f"{self.__BASE_URL}/chats",
-            "Origin": f"{self.__BASE_URL}",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-origin",
-            "Connection": "keep-alive",
-            "Cookie": f"{self.__session.cookie}",
-            "TE": "trailers",
-        }
-
-        with open(fpath, "rb") as fp:
-            files = {
-                "file": (os.path.basename(fpath), fp, self.__get_content_type(fpath)),
-                "orgUuid": (None, self.organization_id),
-            }
-
-            response = requests.post(url, headers=headers, files=files)
-            if response.status_code == 200:
-                return response.json()
-            return None
-
-    def send_text_message(
-        self, chat_id: str, prompt: str, attachment_path: str = "", timeout: int = 240
-    ) -> str | None:
-        """
-        Send message to chat_id using specified prompt, loading attachment if present.
-        Returns answer string if successfull, None otherwise.
-
-        Only supports textual attachments, for other file formats, use send_file_message()
-        """
-        if attachment_path and (
-            not os.path.exists(attachment_path) or not os.path.isfile(attachment_path)
-        ):
-            raise ValueError(f"\nInvalid attachment path -> {attachment_path}")
-
-        attachment_content = None
-        if attachment_path:
-            attachment_content = self.__prepare_text_file_attachment(attachment_path)
-
-        return self.__send_message(chat_id, prompt, attachment_content, timeout=timeout)
-
-    def send_file_message(
-        self, chat_id: str, prompt: str, attachment_path: str = "", timeout: int = 240
-    ) -> str | None:
-        """
-        Send message to chat_id using specified prompt, loading attachment if present.
-        Returns answer string if successfull, None otherwise.
-
-        For text files use send_text_message(), for any other file type, use this function instead
-        """
-        if attachment_path and (
-            not os.path.exists(attachment_path) or not os.path.isfile(attachment_path)
-        ):
-            raise ValueError(f"\nInvalid attachment path -> {attachment_path}")
-
-        attachment_content = None
-        if attachment_path:
-            attachment_content = self.__prepare_other_file_attachment(attachment_path)
-        return self.__send_message(chat_id, prompt, attachment_content, timeout=timeout)
-
-    def get_chat_data(self, chat_id: str) -> dict:
-        """
-        Print JSON response from calling /api/organizations/{organization_id}/chat_conversations/{chat_id}
-        """
-        url = f"{self.__BASE_URL}/api/organizations/{self.organization_id}/chat_conversations/{chat_id}"
-
-        headers = {
-            "User-Agent": self.__session.user_agent,
-            "Accept-Language": "en-US,en;q=0.5",
-            "Referer": f"{self.__BASE_URL}/chats/{chat_id}",
-            "Content-Type": "application/json",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-origin",
-            "Connection": "keep-alive",
-            "Cookie": f"{self.__session.cookie}",
-        }
-
-        return requests.get(url, headers=headers).json()
