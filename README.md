@@ -32,14 +32,8 @@ from claude2_api.client import (
     get_session_data,
     MessageRateLimitHit,
 )
-import time
 
-# Delay period between subsequent requests
-BACKOFF_DELAY_SECONDS = 60
-
-TEXT_FILEPATH = "test.txt"
-
-PDF_FILEPATH = "test.pdf"
+FILEPATH = "test.txt"
 
 # This function will automatically retrieve a SessionData instance using selenium
 # Omitting profile argument will use default Firefox profile
@@ -53,9 +47,10 @@ chat_id = client.create_chat()
 
 try:
     # Used for textual file attachment
-    answer = client.send_text_message(
-        chat_id, "Hello!", attachment_path=TEXT_FILEPATH, timeout=240
+    answer = client.send_message(
+        chat_id, "Hello!", attachment_path=FILEPATH, timeout=240
     )
+    # May return None, in that case, delay a bit and retry
     print(answer)
 except MessageRateLimitHit as e:
     print(f"\nMessage limit hit, resets at {e.resetDate}")
@@ -63,24 +58,6 @@ except MessageRateLimitHit as e:
     quit()
 finally:
     # Perform chat deletion for cleanup
-    client.delete_chat(chat_id)
-
-# Delay to avoid possible rate limit errors
-time.sleep(BACKOFF_DELAY_SECONDS)
-
-# Create another chat for another message
-chat_id = client.create_chat()
-try:
-    # This is used for other attachments file types
-    answer = client.send_file_message(
-        chat_id, "Hello!", attachment_path=PDF_FILEPATH, timeout=240
-    )
-    print(answer)
-except MessageRateLimitHit as e:
-    print(f"\nMessage limit hit, resets at {e.resetDate}")
-    print(f"\n{e.sleep_sec} seconds left until -> {e.resetTimestamp}")
-    quit()
-finally:
     client.delete_chat(chat_id)
 
 # Get a list of all chats ids

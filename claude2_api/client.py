@@ -269,14 +269,14 @@ class ClaudeAPIClient:
 
         with open(fpath, "rb") as fp:
             files = {
-                "file": (os.path.basename(fpath), fp, self.__get_content_type(fpath)),
+                "file": (os.path.basename(fpath), fp, content_type),
                 "orgUuid": (None, self.organization_id),
             }
 
             response = requests.post(url, headers=headers, files=files)
             if response.status_code == 200:
                 return response.json()
-            return None
+            return {}
 
     def create_chat(self) -> str | None:
         """
