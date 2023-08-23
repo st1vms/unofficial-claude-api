@@ -7,9 +7,8 @@ message attachments and auto session gathering using Firefox with geckodriver.
 
 ## How to install
 
-Download and move to the repository folder using a terminal, and execute this command:
 ```
-pip install -e .
+pip install unofficial-claude2-api
 ```
 
 ## Uninstallation
