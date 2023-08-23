@@ -27,7 +27,7 @@ _______
 ## Example Usage
 
 ```python
-from claude_client import (
+from claude2_api.client import (
     ClaudeAPIClient,
     get_session_data,
     MessageRateLimitHit,
