@@ -1,9 +1,6 @@
 from setuptools import setup, find_packages
 from os.path import dirname, join, abspath
 
-with open(join(abspath(dirname(__file__)), "requirements.txt"), "r") as fp:
-    install_requires = fp.read().splitlines()
-
 __DESCRIPTION = """Unofficial Claude2 API supporting direct HTTP chat creation/deletion/retrieval, \
 message attachments and auto session gathering using Firefox with geckodriver. \
 """
@@ -26,5 +23,10 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.9",
-    install_requires=install_requires,
+    install_requires=[
+        "requests",
+        "selenium",
+        "screeninfo",
+        "tzlocal",
+    ],
 )
