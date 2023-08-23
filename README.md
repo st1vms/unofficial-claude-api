@@ -16,7 +16,7 @@ pip install unofficial-claude2-api
 pip uninstall unofficial-claude2-api
 ```
 
-## (Optional) Requirements
+## Requirements
 #### These requirements are needed to auto retrieve session cookie and UserAgent using selenium
  - Firefox installed, and with at least one profile logged into [Claude](https://claude.ai/chats).
 
