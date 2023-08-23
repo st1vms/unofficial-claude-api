@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
-import os
+from os.path import dirname, join, abspath
 
-with open(os.path.join(os.getcwd(), "requirements.txt"), "r") as fp:
+with open(join(abspath(dirname(__file__)), "requirements.txt"), "r") as fp:
     install_requires = fp.read().splitlines()
 
 __DESCRIPTION = """Unofficial Claude2 API supporting direct HTTP chat creation/deletion/retrieval, \
 message attachments and auto session gathering using Firefox with geckodriver. \
 """
 
-with open(os.path.join(os.getcwd(), "README.md"), "r") as fp:
+with open(join(abspath(dirname(__file__)), "README.md"), "r") as fp:
     __LONG_DESCRIPTION = fp.read().lstrip().rstrip()
 
 setup(
