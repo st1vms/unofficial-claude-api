@@ -198,6 +198,7 @@ class ClaudeAPIClient:
             raise ValueError("Invalid SessionData argument!")
 
         self.session_key = self.__get_session_key_from_cookie()
+
         self.organization_id = self.__get_organization_id()
 
         # Retrieve timezone string
@@ -206,10 +207,13 @@ class ClaudeAPIClient:
     def __get_session_key_from_cookie(self):
         cookies = self.__session.cookie.split("; ")
         for cookie in cookies:
-            name, value = cookie.split("=")
-            if name == "sessionKey":
-                return f"{name}={value}"
-        return None
+            if "=" in cookie:
+                name, value = cookie.split("=", maxsplit=1)
+                if name == "sessionKey":
+                    return f"{name}={value}"
+        raise RuntimeError(
+            "\nCannot retrieve session cookie!\nCheck Claude login in Firefox profile..."
+        )
 
     def __get_organization_id(self) -> str:
         url = f"{self.__BASE_URL}/api/organizations"
@@ -232,7 +236,7 @@ class ClaudeAPIClient:
             res = json.loads(response.text)
             if res and "uuid" in res[0]:
                 return res[0]["uuid"]
-        raise RuntimeError("Cannot retrieve Organization ID!")
+        raise RuntimeError(f"Cannot retrieve Organization ID!\n{response.text}")
 
     def __prepare_text_file_attachment(self, file_path: str) -> dict:
         file_name = os.path.basename(file_path)
@@ -300,7 +304,7 @@ class ClaudeAPIClient:
             "Content-Type": "application/json",
             "Origin": self.__BASE_URL,
             "Referer": f"{self.__BASE_URL}/chats",
-            "Cookie": self.__session.cookie,
+            "Cookie": self.session_key,
             "DNT": "1",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
@@ -330,7 +334,7 @@ class ClaudeAPIClient:
             "Content-Length": f"{len(payload)}",
             "Origin": self.__BASE_URL,
             "Referer": f"{self.__BASE_URL}/chats",
-            "Cookie": self.__session.cookie,
+            "Cookie": self.session_key,
             "DNT": "1",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
@@ -350,7 +354,7 @@ class ClaudeAPIClient:
             "Accept-Language": "en-US,en;q=0.5",
             "Content-Type": "application/json",
             "Referer": f"{self.__BASE_URL}/chats",
-            "Cookie": self.__session.cookie,
+            "Cookie": self.session_key,
             "DNT": "1",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
@@ -375,7 +379,7 @@ class ClaudeAPIClient:
         headers = {
             "Accept-Language": "en-US,en;q=0.5",
             "Referer": f"{self.__BASE_URL}/chats/{chat_id}",
-            "Cookie": self.__session.cookie,
+            "Cookie": self.session_key,
             "Content-Type": "application/json",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
