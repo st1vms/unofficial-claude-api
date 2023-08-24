@@ -44,6 +44,11 @@ client = ClaudeAPIClient(data)
 
 # Create a new chat and cache the chat_id
 chat_id = client.create_chat()
+if not chat_id:
+    # This will not throw MessageRateLimitHit
+    # But it still means that account has no more messages left.
+    print(f"\nMessage limit hit, cannot create chat...")
+    quit()
 
 try:
     # Used for sending message with or without attachment
