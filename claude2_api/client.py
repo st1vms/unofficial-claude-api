@@ -197,10 +197,19 @@ class ClaudeAPIClient:
         ):
             raise ValueError("Invalid SessionData argument!")
 
+        self.session_key = self.__get_session_key_from_cookie()
         self.organization_id = self.__get_organization_id()
 
         # Retrieve timezone string
         self.__timezone = get_localzone().key
+
+    def __get_session_key_from_cookie(self):
+        cookies = self.__session.cookie.split("; ")
+        for cookie in cookies:
+            name, value = cookie.split("=")
+            if name == "sessionKey":
+                return f"{name}={value}"
+        return None
 
     def __get_organization_id(self) -> str:
         url = f"{self.__BASE_URL}/api/organizations"
@@ -209,7 +218,7 @@ class ClaudeAPIClient:
             "Accept-Language": "en-US,en;q=0.5",
             "Content-Type": "application/json",
             "Referer": f"{self.__BASE_URL}/chats",
-            "Cookie": self.__session.cookie,
+            "Cookie": self.session_key,
             "DNT": "1",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
