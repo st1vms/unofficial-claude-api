@@ -52,11 +52,14 @@ if not chat_id:
 
 try:
     # Used for sending message with or without attachment
-    answer = client.send_message(
-        chat_id, "Hello!", attachment_path=FILEPATH, timeout=240
-    )
-    # May return None, in that case, delay a bit and retry
-    print(answer)
+    # Returns a SendMessageResponse instance
+    res = client.send_message(chat_id, "Hello!", attachment_path=FILEPATH, timeout=240)
+    # Inspect answer
+    if res.answer:
+        print(res.answer)
+    else:
+        # Inspect response status code and json error
+        print(f"\nError code {res.status_code}, response -> {res.error_response}")
 except MessageRateLimitHit as e:
     # The exception will hold these informations about the rate limit:
     print(f"\nMessage limit hit, resets at {e.resetDate}")
@@ -71,18 +74,21 @@ all_chat_ids = client.get_all_chat_ids()
 # Delete all chats
 for chat in all_chat_ids:
     client.delete_chat(chat)
+
+# Or by using a shortcut utility
+#
+# client.delete_all_chats()
 ```
 
 ______
 
 ## TROUBLESHOOTING
 
-This api will sometimes throw 403 error on `send_message`, when this happens it is recommeded to look for these things:
+This api will sometime return a 403 status_code when calling `send_message`, when this happens it is recommeded to look for these things:
 - Check if your IP location is allowed, should be in US/UK, other locations may work sporadically.
 
 - Don't try to send the same prompt/file over and over again, instead wait for some time, and change input.
 
-- For now the only way to know if 403/500 error happened, is to check if answer object is None.
 
 ## DISCLAIMER
 
