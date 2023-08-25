@@ -72,3 +72,19 @@ all_chat_ids = client.get_all_chat_ids()
 for chat in all_chat_ids:
     client.delete_chat(chat)
 ```
+
+______
+
+## TROUBLESHOOTING
+
+This api will sometimes throw 403 error on `send_message`, when this happens it is recommeded to look for these things:
+- Check if your IP location is allowed, should be in US/UK, other locations may work sporadically.
+
+- Don't try to send the same prompt/file over and over again, instead wait for some time, and change input.
+
+- For now the only way to know if 403/500 error happened, is to check if answer object is None.
+
+## DISCLAIMER
+
+This repository provides an unofficial API for automating free accounts on [claude.ai](https://claude.ai/chats).
+Please note that this API is not endorsed, supported, or maintained by Anthropic. Use it at your own discretion and risk. Anthropic may make changes to their official product or APIs at any time, which could affect the functionality of this unofficial API. We do not guarantee the accuracy, reliability, or security of the information and data retrieved using this API. By using this repository, you agree that the maintainers are not responsible for any damages, issues, or consequences that may arise from its usage. Always refer to Anthropic's official documentation and terms of use. This project is maintained independently by contributors who are not affiliated with Anthropic.
