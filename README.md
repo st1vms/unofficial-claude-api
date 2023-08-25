@@ -2,8 +2,27 @@
 
 # unofficial-claude2-api
 
-Claude2 unofficial API supporting direct HTTP chat creation/deletion/retrieval,
-message attachments and auto session gathering using Firefox with geckodriver.
+This unofficial Python API provides access to the conversational capabilities of Anthropic's Claude AI through a simple chat messaging interface.
+
+While not officially supported by Anthropic, this library can enable interesting conversational applications.
+
+It allows for:
+- Creating chat sessions with Claude and getting chat IDs.
+- Sending messages to Claude containing text, images, files, etc.
+- Having a natural conversations spanning multiple messages with chat history.
+- Deleting old chats when they are no longer needed.
+
+### Some of the key things you can do with Claude through this API:
+
+- Have natural conversations and ask questions about a wide variety of topics. Claude can chat about current events, pop culture, sports,
+and more.
+
+- Get helpful explanations on complex topics. Ask Claude to explain a concept or current event in simple terms.
+
+- Generate summaries of long articles or documents. Pass a URL or text to Claude and get back a concise summary.
+
+- Receive thoughtful responses to open-ended prompts and ideas. Claude can brainstorm ideas, expand on concepts, and have philosophical discussions.
+
 
 ## How to install
 
