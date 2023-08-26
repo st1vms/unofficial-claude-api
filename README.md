@@ -14,12 +14,12 @@ It allows for:
 
 ### Some of the key things you can do with Claude through this API:
 
-- Have natural conversations and ask questions about a wide variety of topics. Claude can chat about current events, pop culture, sports,
+- Ask questions about a wide variety of topics. Claude can chat about current events, pop culture, sports,
 and more.
 
 - Get helpful explanations on complex topics. Ask Claude to explain a concept or current event in simple terms.
 
-- Generate summaries of long articles or documents. Pass a URL or text to Claude and get back a concise summary.
+- Generate summaries of long articles or documents. Just give the filepath as an attachment to Claude and get back a concise summary.
 
 - Receive thoughtful responses to open-ended prompts and ideas. Claude can brainstorm ideas, expand on concepts, and have philosophical discussions.
 
