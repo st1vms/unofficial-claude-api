@@ -1,5 +1,6 @@
 # App specific ignores
 prompt.txt
+test*.*
 
 vscode
 

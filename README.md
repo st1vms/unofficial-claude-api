@@ -8,8 +8,8 @@ While not officially supported by Anthropic, this library can enable interesting
 
 It allows for:
 - Creating chat sessions with Claude and getting chat IDs.
-- Sending messages to Claude containing text, images, files, etc.
-- Having a natural conversations spanning multiple messages with chat history.
+- Sending messages to Claude containing up to 5 attachment files (txt, pdf, csv, etc...) 20 MB each.
+- Retrieving chat message history.
 - Deleting old chats when they are no longer needed.
 
 ### Some of the key things you can do with Claude through this API:
@@ -17,9 +17,9 @@ It allows for:
 - Ask questions about a wide variety of topics. Claude can chat about current events, pop culture, sports,
 and more.
 
-- Get helpful explanations on complex topics. Ask Claude to explain a concept or current event in simple terms.
+- Get helpful explanations on complex topics. Ask Claude to explain concepts and ideas in simple terms.
 
-- Generate summaries of long articles or documents. Just give the filepath as an attachment to Claude and get back a concise summary.
+- Generate summaries from long text or documents. Just give the filepath as an attachment to Claude and get back a concise summary.
 
 - Receive thoughtful responses to open-ended prompts and ideas. Claude can brainstorm ideas, expand on concepts, and have philosophical discussions.
 
@@ -35,28 +35,38 @@ pip install unofficial-claude2-api
 pip uninstall unofficial-claude2-api
 ```
 
-## Requirements
-#### These requirements are needed to auto retrieve session cookie and UserAgent using selenium
+
+## These requirements are needed to auto retrieve session cookie and UserAgent using selenium
+
  - Firefox installed, and with at least one profile logged into [Claude](https://claude.ai/chats).
 
  - [geckodriver](https://github.com/mozilla/geckodriver/releases) installed inside a folder registered in PATH environment variable.
 
-_______
+#### *( scrolling through this README you'll find also a manual alternative )*
+
 
 ## Example Usage
 
 ```python
 from claude2_api.client import (
     ClaudeAPIClient,
-    get_session_data,
-    MessageRateLimitHit,
+    SendMessageResponse,
+    MessageRateLimitError,
 )
+from claude2_api.session import SessionData, get_session_data
 
-FILEPATH = "test.txt"
+# Wildcard import will also work safely, same as above
+# from claude2_api import *
+
+# List of attachments filepaths, up to 5, max 10 MB each
+FILEPATH_LIST = [
+    "test1.txt",
+    "test2.txt",
+]
 
 # This function will automatically retrieve a SessionData instance using selenium
 # Omitting profile argument will use default Firefox profile
-data = get_session_data()
+data: SessionData = get_session_data()
 
 # Initialize a client instance using a session
 client = ClaudeAPIClient(data)
@@ -70,16 +80,18 @@ if not chat_id:
     quit()
 
 try:
-    # Used for sending message with or without attachment
+    # Used for sending message with or without attachments
     # Returns a SendMessageResponse instance
-    res = client.send_message(chat_id, "Hello!", attachment_path=FILEPATH, timeout=240)
+    res: SendMessageResponse = client.send_message(
+        chat_id, "Hello!", attachment_paths=FILEPATH_LIST, timeout=240
+    )
     # Inspect answer
     if res.answer:
         print(res.answer)
     else:
         # Inspect response status code and json error
         print(f"\nError code {res.status_code}, response -> {res.error_response}")
-except MessageRateLimitHit as e:
+except MessageRateLimitError as e:
     # The exception will hold these informations about the rate limit:
     print(f"\nMessage limit hit, resets at {e.resetDate}")
     print(f"\n{e.sleep_sec} seconds left until -> {e.resetTimestamp}")
@@ -99,6 +111,17 @@ for chat in all_chat_ids:
 # client.delete_all_chats()
 ```
 
+## How to avoid using selenium ( faster loading )
+If for whatever reason you'd like to avoid auto session gathering using selenium,
+you just need to manually create a `SessionData` class for `ClaudeAPIClient` constructor, like so...
+```python
+from claude2_api.session import SessionData
+
+cookie_header_value = "The entire Cookie header value string when you visit https://claude.ai/chats"
+user_agent = "User agent to use, required"
+
+data = SessionData(cookie_header_value, user_agent)
+```
 ______
 
 ## TROUBLESHOOTING
