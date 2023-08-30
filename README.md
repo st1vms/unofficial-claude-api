@@ -17,7 +17,7 @@ It allows for:
 - Ask questions about a wide variety of topics. Claude can chat about current events, pop culture, sports,
 and more.
 
-- Get helpful explanations on complex topics. Ask Claude to explain a concept or current event in simple terms.
+- Get helpful explanations on complex topics. Ask Claude to explain concepts and ideas in simple terms.
 
 - Generate summaries from long text or documents. Just give the filepath as an attachment to Claude and get back a concise summary.
 
@@ -78,7 +78,7 @@ if not chat_id:
     quit()
 
 try:
-    # Used for sending message with or without attachment
+    # Used for sending message with or without attachments
     # Returns a SendMessageResponse instance
     res: SendMessageResponse = client.send_message(
         chat_id, "Hello!", attachment_paths=FILEPATH_LIST, timeout=240
@@ -109,6 +109,17 @@ for chat in all_chat_ids:
 # client.delete_all_chats()
 ```
 
+## How to avoid using selenium ( faster loading )
+If for whatever reason you'd like to avoid auto session gathering using selenium,
+you just need to manually create a `SessionData` class for `ClaudeAPIClient` constructor, like so...
+```python
+from claude2_api.session import SessionData
+
+cookie_header_value = "The entire Cookie header value string when you visit https://claude.ai/chats"
+user_agent = "User agent to use, required"
+
+data = SessionData(cookie_header_value, user_agent)
+```
 ______
 
 ## TROUBLESHOOTING

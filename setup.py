@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from os.path import dirname, join, abspath
 
 __DESCRIPTION = """Unofficial Claude2 API supporting direct HTTP chat creation/deletion/retrieval, \
-message attachments and auto session gathering using Firefox with geckodriver. \
+multiple message attachments and auto session gathering using Firefox with geckodriver. \
 """
 
 with open(join(abspath(dirname(__file__)), "README.md"), "r") as fp:

@@ -37,9 +37,15 @@ class MessageRateLimitError(Exception):
     def __init__(self, resetTimestamp: int, *args: object) -> None:
         super().__init__(*args)
         self.resetTimestamp: int = resetTimestamp
+        """
+        The timestamp in seconds when the message rate limit will be reset
+        """
         self.resetDate: str = datetime.fromtimestamp(resetTimestamp).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
+        """
+        Date formatted timestamp in the format %Y-%m-%d %H:%M:%S
+        """
 
     @property
     def sleep_sec(self) -> int:
@@ -53,6 +59,12 @@ class ClaudeAPIClient:
     __BASE_URL = "https://claude.ai"
 
     def __init__(self, session: SessionData) -> None:
+        """
+        Constructs a `ClaudeAPIClient` instance using provided `SessionData`,
+        automatically retrieving organization_id and local timezone.
+
+        Raises `ValueError` in case of failure
+        """
         self.__session = session
         if (
             not self.__session
@@ -236,7 +248,7 @@ class ClaudeAPIClient:
 
     def get_all_chat_ids(self) -> list[str]:
         """
-        Retrieve a list with all created chat_ids, empty list if no chat is found.
+        Retrieve a list with all created chat UUID strings, empty list if no chat is found.
         """
         url = f"{self.__BASE_URL}/api/organizations/{self.organization_id}/chat_conversations"
 
@@ -282,7 +294,7 @@ class ClaudeAPIClient:
 
     def delete_all_chats(self) -> bool:
         """
-        Deleted all chats associated with user
+        Deleted all chats associated with this session
 
         Returns True on success, False in case at least one chat was not deleted.
         """
@@ -297,9 +309,13 @@ class ClaudeAPIClient:
         timeout: int = 240,
     ) -> SendMessageResponse:
         """
-        Send message to `chat_id` using specified `prompt`, loading `attachment_path` if present.
+        Send message to `chat_id` using specified `prompt` string.
 
-        Returns a `SendMessageResponse` instance, having an:
+        You can omitt or provide an attachments path list using `attachment_paths`
+
+        Set a different request timeout using `timeout` argument
+
+        Returns a `SendMessageResponse` instance, having:
         - `answer` string field,
         - `status_code` integer field,
         - `error_response` dictionary field, which will be filled in case of errors for inspections purposes.
