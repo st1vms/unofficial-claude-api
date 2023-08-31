@@ -58,7 +58,7 @@ from claude2_api.session import SessionData, get_session_data
 # Wildcard import will also work safely, same as above
 # from claude2_api import *
 
-# List of attachments filepaths, up to 5, max 10 MB each
+# List of attachments filepaths, up to 5, max 20 MB each
 FILEPATH_LIST = [
     "test1.txt",
     "test2.txt",
