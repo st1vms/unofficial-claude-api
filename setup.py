@@ -10,7 +10,7 @@ with open(join(abspath(dirname(__file__)), "README.md"), "r") as fp:
 
 setup(
     name="unofficial-claude2-api",
-    version="0.1.6",
+    version="0.1.7",
     author="st1vms",
     author_email="stefano.maria.salvatore@gmail.com",
     description=__DESCRIPTION,
