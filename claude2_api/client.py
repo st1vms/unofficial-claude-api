@@ -390,6 +390,12 @@ class ClaudeAPIClient:
 
         err = {}
         if not answer:
-            err = json.loads(response.content.decode("utf-8"))
-
+            try:
+                err = json.loads(response.content.decode("utf-8"))
+            except UnicodeDecodeError:
+                try:
+                    err = json.loads(response.content.decode("utf-8", errors='ignore'))
+                except:
+                    err = {}
+        
         return SendMessageResponse(answer, response.status_code, err)
