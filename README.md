@@ -55,7 +55,7 @@ from claude2_api.client import (
 )
 from claude2_api.session import SessionData, get_session_data
 
-# Wildcard import will also work safely, same as above
+# Wildcard import will also work the same as above
 # from claude2_api import *
 
 # List of attachments filepaths, up to 5, max 20 MB each
@@ -74,7 +74,7 @@ client = ClaudeAPIClient(data)
 # Create a new chat and cache the chat_id
 chat_id = client.create_chat()
 if not chat_id:
-    # This will not throw MessageRateLimitHit
+    # This will not throw MessageRateLimitError
     # But it still means that account has no more messages left.
     print(f"\nMessage limit hit, cannot create chat...")
     quit()
