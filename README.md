@@ -122,6 +122,25 @@ user_agent = "User agent to use, required"
 
 data = SessionData(cookie_header_value, user_agent)
 ```
+
+## How to set HTTP/S proxy
+*** NOTE ( Only proxies with no user/passwd authentication are supported ) ***
+
+If you'd like to set a proxy for all requests, follow this example:
+```py
+from claude2_api.client import HTTPProxy, ClaudeAPIClient
+
+# Create HTTPProxy instance
+http_proxy = HTTPProxy(
+    "the.proxy.ip.addr",    # Proxy IP
+    8080,                   # Proxy port
+    use_ssl=False           # Set to True if proxy uses HTTPS schema
+)
+
+# session = ...
+# Give the proxy instance to ClaudeAPIClient constructor, along with session data.
+client = ClaudeAPIClient(session, proxy=http_proxy)
+```
 ______
 
 ## TROUBLESHOOTING

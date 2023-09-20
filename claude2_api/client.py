@@ -8,6 +8,7 @@ from time import time
 from datetime import datetime
 from tzlocal import get_localzone
 from dataclasses import dataclass
+from typing import Optional
 from .session import SessionData
 
 # Claude client module
@@ -55,16 +56,39 @@ class MessageRateLimitError(Exception):
         return int(abs(time() - self.resetTimestamp)) + 1
 
 
+@dataclass
+class HTTPProxy:
+    """
+    Dataclass holding http/s proxy informations:
+
+    `ip` -> Proxy IP
+
+    `port` -> Proxy port
+
+    `use_ssl` -> Boolean flag to indicate if proxy uses https schema
+
+    NOTE: This proxy must not require user/passwd authentication!
+    """
+
+    proxy_ip: str
+    proxy_port: int
+    use_ssl: Optional[bool] = False
+
+
 class ClaudeAPIClient:
     __BASE_URL = "https://claude.ai"
 
-    def __init__(self, session: SessionData) -> None:
+    def __init__(self, session: SessionData, proxy: HTTPProxy = None) -> None:
         """
         Constructs a `ClaudeAPIClient` instance using provided `SessionData`,
         automatically retrieving organization_id and local timezone.
 
+        `proxy` argument is an optional `HTTPProxy` instance, holding proxy informations ( ip, port )
+
         Raises `ValueError` in case of failure
+
         """
+        self.proxy = proxy
         self.__session = session
         if (
             not self.__session
@@ -79,6 +103,15 @@ class ClaudeAPIClient:
 
         # Retrieve timezone string
         self.__timezone = get_localzone().key
+
+    def __get_proxy(self) -> dict[str, str] | None:
+        if not self.proxy or not self.proxy.ip or not self.proxy.proxy_port:
+            return None
+
+        return {
+            "http": f"{'https' if self.proxy.use_ssl else 'http'}://{self.proxy.proxy_ip}:{self.proxy.proxy_port}",
+            "https": f"{'https' if self.proxy.use_ssl else 'http'}://{self.proxy.proxy_ip}:{self.proxy.proxy_port}",
+        }
 
     def __get_session_key_from_cookie(self):
         cookies = self.__session.cookie.split("; ")
@@ -107,7 +140,7 @@ class ClaudeAPIClient:
             "User-Agent": self.__session.user_agent,
         }
 
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, proxies=self.__get_proxy())
         if response.status_code == 200 and response.text:
             res = json.loads(response.text)
             if res and "uuid" in res[0]:
@@ -162,7 +195,9 @@ class ClaudeAPIClient:
                 "orgUuid": (None, self.organization_id),
             }
 
-            response = requests.post(url, headers=headers, files=files)
+            response = requests.post(
+                url, headers=headers, files=files, proxies=self.__get_proxy()
+            )
             if response.status_code == 200:
                 return response.json()
         print(
@@ -213,7 +248,9 @@ class ClaudeAPIClient:
             "User-Agent": self.__session.user_agent,
         }
 
-        response = requests.post(url, headers=headers, data=payload)
+        response = requests.post(
+            url, headers=headers, data=payload, proxies=self.__get_proxy()
+        )
         if response and response.status_code == 201:
             j = response.json()
             if j and "uuid" in j:
@@ -243,7 +280,9 @@ class ClaudeAPIClient:
             "User-Agent": self.__session.user_agent,
         }
 
-        response = requests.delete(url, headers=headers, data=payload)
+        response = requests.delete(
+            url, headers=headers, data=payload, proxies=self.__get_proxy()
+        )
         return response.status_code == 204
 
     def get_all_chat_ids(self) -> list[str]:
@@ -265,7 +304,7 @@ class ClaudeAPIClient:
             "User-Agent": self.__session.user_agent,
         }
 
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, proxies=self.__get_proxy())
         if response.status_code == 200:
             j = response.json()
             return [chat["uuid"] for chat in j if "uuid" in chat]
@@ -290,7 +329,7 @@ class ClaudeAPIClient:
             "User-Agent": self.__session.user_agent,
         }
 
-        return requests.get(url, headers=headers).json()
+        return requests.get(url, headers=headers, proxies=self.__get_proxy()).json()
 
     def delete_all_chats(self) -> bool:
         """
@@ -367,7 +406,13 @@ class ClaudeAPIClient:
             "User-Agent": self.__session.user_agent,
         }
 
-        response = requests.post(url, headers=headers, data=payload, timeout=timeout)
+        response = requests.post(
+            url,
+            headers=headers,
+            data=payload,
+            timeout=timeout,
+            proxies=self.__get_proxy(),
+        )
 
         answer = None
         if response.status_code == 200 and response.content:
@@ -394,8 +439,8 @@ class ClaudeAPIClient:
                 err = json.loads(response.content.decode("utf-8"))
             except UnicodeDecodeError:
                 try:
-                    err = json.loads(response.content.decode("utf-8", errors='ignore'))
+                    err = json.loads(response.content.decode("utf-8", errors="ignore"))
                 except:
                     err = {}
-        
+
         return SendMessageResponse(answer, response.status_code, err)
