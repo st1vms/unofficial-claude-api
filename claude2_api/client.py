@@ -105,7 +105,7 @@ class ClaudeAPIClient:
         self.__timezone = get_localzone().key
 
     def __get_proxy(self) -> dict[str, str] | None:
-        if not self.proxy or not self.proxy.ip or not self.proxy.proxy_port:
+        if not self.proxy or not self.proxy.proxy_ip or not self.proxy.proxy_port:
             return None
 
         return {
