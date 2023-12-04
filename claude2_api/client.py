@@ -206,7 +206,7 @@ class ClaudeAPIClient:
         return None
 
     def __check_file_attachments_paths(self, path_list: list[str]):
-        __FILESIZE_LIMIT = 20971520  # 20 MB
+        __FILESIZE_LIMIT = 10485760  # 10 MB
         if not path_list:
             return
 
@@ -222,7 +222,7 @@ class ClaudeAPIClient:
             _size = os.path.getsize(path)
             if _size > __FILESIZE_LIMIT:
                 raise ValueError(
-                    f"Attachment file exceed file size limit by {_size-__FILESIZE_LIMIT} out of 20MB -> {path}"
+                    f"Attachment file exceed file size limit by {_size-__FILESIZE_LIMIT} out of 10MB -> {path}"
                 )
 
     def create_chat(self) -> str | None:
