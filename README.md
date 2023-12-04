@@ -8,7 +8,7 @@ While not officially supported by Anthropic, this library can enable interesting
 
 It allows for:
 - Creating chat sessions with Claude and getting chat IDs.
-- Sending messages to Claude containing up to 5 attachment files (txt, pdf, csv, etc...) 20 MB each.
+- Sending messages to Claude containing up to 5 attachment files (txt, pdf, csv, etc...) 10 MB each.
 - Retrieving chat message history.
 - Deleting old chats when they are no longer needed.
 
