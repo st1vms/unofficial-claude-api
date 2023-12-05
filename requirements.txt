@@ -1,5 +1,0 @@
-curl_cffi
-selenium
-screeninfo
-tzlocal
-brotli
