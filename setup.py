@@ -1,4 +1,4 @@
-"""aiproducer setup.py"""
+"""setup.py"""
 from os.path import dirname, join, abspath
 from setuptools import setup, find_packages
 
