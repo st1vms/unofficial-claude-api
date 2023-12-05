@@ -25,7 +25,7 @@ with open(
 
 setup(
     name="unofficial-claude2-api",
-    version="0.2.0",
+    version="0.2.1",
     author="st1vms",
     author_email="stefano.maria.salvatore@gmail.com",
     description=__DESCRIPTION,
