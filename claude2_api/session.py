@@ -1,109 +1,103 @@
-import os
-import shutil
-import platform
-import screeninfo
-import selenium
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
+"""Session module"""
+from os import path as ospath
+from os import listdir, environ, getenv
+from shutil import which, rmtree
 from dataclasses import dataclass
+from platform import system as sys_name
+from screeninfo import get_monitors
+from selenium.webdriver import Firefox as FirefoxWebDriver
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 
 # Selenium session module
 
 
 def __cleanup_resources():
-    if platform.system() == "Windows":
-        folder_path = os.path.join(os.environ["LOCALAPPDATA"], "Temp")
-    elif platform.system() == "Linux":
+    if sys_name() == "Windows":
+        folder_path = ospath.join(environ["LOCALAPPDATA"], "Temp")
+    elif sys_name() == "Linux":
         folder_path = "/tmp"
     else:
         return
 
-    for filename in os.listdir(folder_path):
-        full_path = os.path.join(folder_path, filename)
-        if os.path.isdir(full_path):
-            for dirPrefix in ["tmp", "rust_mozpr"]:
-                if filename.startswith(dirPrefix):
+    for filename in listdir(folder_path):
+        full_path = ospath.join(folder_path, filename)
+        if ospath.isdir(full_path):
+            for dir_prefix in ["tmp", "rust_mozpr"]:
+                if filename.startswith(dir_prefix):
                     try:
-                        shutil.rmtree(full_path)
+                        rmtree(full_path)
                         break
-                    except:
+                    except (PermissionError, FileNotFoundError, OSError):
                         break
 
 
 def __get_firefox_options(
-    firefox_profile: str = "", headless: bool = False, private_mode: bool = False
-) -> selenium.webdriver.firefox.options.Options:
+    firefox_profile: str = None, headless: bool = False, private_mode: bool = False
+) -> FirefoxOptions:
     """Returns chrome options instance with given configuration set"""
     options = FirefoxOptions()
-    options.profile = (
-        __get_default_firefox_profile() if not firefox_profile else firefox_profile
-    )
+
+    if firefox_profile and isinstance(firefox_profile, str):
+        options.profile = firefox_profile
 
     if headless:
-        monitor = screeninfo.get_monitors()[0]
+        monitor = get_monitors()[0]
+        environ["MOZ_HEADLESS_WIDTH"] = str(monitor.width)
+        environ["MOZ_HEADLESS_HEIGHT"] = str(monitor.height)
         options.add_argument("--headless")
         options.add_argument(f"--window-size={monitor.width},{monitor.height}")
         options.add_argument("--start-maximized")
         options.set_preference("media.volume_scale", "0.0")
-
-        # Opt
         options.set_preference("browser.cache.disk.enable", False)
         options.set_preference("browser.cache.memory.enable", False)
         options.set_preference("browser.cache.offline.enable", False)
         options.set_preference("network.http.use-cache", False)
 
     if private_mode:
-        options.set_preference(
-            "browser.privatebrowsing.autostart", True
-        )  # Start in private mode
+        options.set_preference("browser.privatebrowsing.autostart", True)
 
     return options
 
 
-def __get_firefox_webdriver(
-    *args, use_selwire: bool = False, **kwargs
-) -> selenium.webdriver:
+def __get_firefox_webdriver(*args, **kwargs) -> FirefoxWebDriver:
     """Constructor wrapper for Firefox webdriver"""
 
-    if platform.system() == "Windows":
+    if sys_name() == "Windows":
         # Check if firefox is in PATH
-        DEFAULT_WINDWOS_FIREFOX_PATH = "C:\\Program Files\\Mozilla Firefox"
+        default_firefox_win_path = "C:\\Program Files\\Mozilla Firefox"
         if (
-            not shutil.which("firefox")
-            and os.environ["PATH"].find(DEFAULT_WINDWOS_FIREFOX_PATH) == -1
+            not which("firefox")
+            and environ["PATH"].find(default_firefox_win_path) == -1
         ):
-            os.environ["PATH"] += f";{DEFAULT_WINDWOS_FIREFOX_PATH}"
+            environ["PATH"] += f";{default_firefox_win_path}"
 
-    if use_selwire:
-        from seleniumwire import webdriver
-
-        return webdriver.Firefox(*args, **kwargs)
-    return selenium.webdriver.Firefox(*args, **kwargs)
+    return FirefoxWebDriver(*args, **kwargs)
 
 
 def __linux_default_firefox_profile_path() -> str:
-    profile_path = os.path.expanduser("~/.mozilla/firefox")
+    profile_path = ospath.expanduser("~/.mozilla/firefox")
 
-    if not os.path.exists(profile_path):
-        raise RuntimeError(f"Unable to retrieve {profile_path} directory")
+    if not ospath.exists(profile_path):
+        raise RuntimeError(f"\nUnable to retrieve {profile_path} directory")
 
-    for entry in os.listdir(profile_path):
+    for entry in listdir(profile_path):
         if entry.endswith(".default-release"):
-            return os.path.join(profile_path, entry)
+            return ospath.join(profile_path, entry)
     return None
 
 
 def __win_default_firefox_profile_path() -> str:
-    profile_path = os.path.join(os.getenv("APPDATA"), "Mozilla\Firefox\Profiles")
-    for entry in os.listdir(profile_path):
+    profile_path = ospath.join(getenv("APPDATA"), "Mozilla", "Firefox", "Profiles")
+    for entry in listdir(profile_path):
         if entry.endswith(".default-release"):
-            return os.path.join(profile_path, entry)
+            return ospath.join(profile_path, entry)
     return None
 
 
 def __get_default_firefox_profile() -> str:
-    if platform.system() == "Windows":
-        return __win_default_firefox_profile_path()
-    elif platform.system() == "Linux":
+    if sys_name() == "Windows":
+        return __win_default_firefox_profile_path
+    elif sys_name() == "Linux":
         return __linux_default_firefox_profile_path()
     return ""
 
@@ -113,7 +107,8 @@ class SessionData:
     """
     This session class is made for `ClaudeAPIClient` constructor.
 
-    It can be auto generated by having a working login in Firefox, and geckodriver installed, calling `get_session_data()`
+    It can be auto generated by having a working login in Firefox
+    and geckodriver installed, calling `get_session_data()`
     with the Firefox profile path, or the default one if omitted.
     """
 
@@ -136,18 +131,18 @@ def get_session_data(profile: str = "", quiet: bool = False) -> SessionData | No
     The default Firefox profile will be used, if the profile argument was not overwrited.
     """
 
-    __BASE_CHAT_URL = "https://claude.ai/chats"
+    base_url = "https://claude.ai/chats"
     if not profile:
         profile = __get_default_firefox_profile()
 
     if not quiet:
-        print(f"\nRetrieving {__BASE_CHAT_URL} session cookie from {profile}")
+        print(f"\nRetrieving {base_url} session cookie from {profile}")
 
     __cleanup_resources()
     opts = __get_firefox_options(firefox_profile=profile, headless=True)
     driver = __get_firefox_webdriver(options=opts)
     try:
-        driver.get(__BASE_CHAT_URL)
+        driver.get(base_url)
 
         driver.implicitly_wait(2)
         user_agent = driver.execute_script("return navigator.userAgent")
