@@ -19,8 +19,6 @@ from tzlocal import get_localzone
 from brotli import decompress as br_decompress
 from .session import SessionData
 
-# Claude client module
-
 
 @dataclass(frozen=True)
 class SendMessageResponse:

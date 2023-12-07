@@ -1,105 +1,11 @@
 """Session module"""
-from os import path as ospath
-from os import listdir, environ, getenv
-from shutil import which, rmtree
 from dataclasses import dataclass
-from platform import system as sys_name
-from screeninfo import get_monitors
-from selenium.webdriver import Firefox as FirefoxWebDriver
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
-
-# Selenium session module
-
-
-def __cleanup_resources():
-    if sys_name() == "Windows":
-        folder_path = ospath.join(environ["LOCALAPPDATA"], "Temp")
-    elif sys_name() == "Linux":
-        folder_path = "/tmp"
-    else:
-        return
-
-    for filename in listdir(folder_path):
-        full_path = ospath.join(folder_path, filename)
-        if ospath.isdir(full_path):
-            for dir_prefix in ["tmp", "rust_mozpr"]:
-                if filename.startswith(dir_prefix):
-                    try:
-                        rmtree(full_path)
-                        break
-                    except (PermissionError, FileNotFoundError, OSError):
-                        break
-
-
-def __get_firefox_options(
-    firefox_profile: str = None, headless: bool = False, private_mode: bool = False
-) -> FirefoxOptions:
-    """Returns chrome options instance with given configuration set"""
-    options = FirefoxOptions()
-
-    if firefox_profile and isinstance(firefox_profile, str):
-        options.profile = firefox_profile
-
-    if headless:
-        monitor = get_monitors()[0]
-        environ["MOZ_HEADLESS_WIDTH"] = str(monitor.width)
-        environ["MOZ_HEADLESS_HEIGHT"] = str(monitor.height)
-        options.add_argument("--headless")
-        options.add_argument(f"--window-size={monitor.width},{monitor.height}")
-        options.add_argument("--start-maximized")
-        options.set_preference("media.volume_scale", "0.0")
-        options.set_preference("browser.cache.disk.enable", False)
-        options.set_preference("browser.cache.memory.enable", False)
-        options.set_preference("browser.cache.offline.enable", False)
-        options.set_preference("network.http.use-cache", False)
-
-    if private_mode:
-        options.set_preference("browser.privatebrowsing.autostart", True)
-
-    return options
-
-
-def __get_firefox_webdriver(*args, **kwargs) -> FirefoxWebDriver:
-    """Constructor wrapper for Firefox webdriver"""
-
-    if sys_name() == "Windows":
-        # Check if firefox is in PATH
-        default_firefox_win_path = "C:\\Program Files\\Mozilla Firefox"
-        if (
-            not which("firefox")
-            and environ["PATH"].find(default_firefox_win_path) == -1
-        ):
-            environ["PATH"] += f";{default_firefox_win_path}"
-
-    return FirefoxWebDriver(*args, **kwargs)
-
-
-def __linux_default_firefox_profile_path() -> str:
-    profile_path = ospath.expanduser("~/.mozilla/firefox")
-
-    if not ospath.exists(profile_path):
-        raise RuntimeError(f"\nUnable to retrieve {profile_path} directory")
-
-    for entry in listdir(profile_path):
-        if entry.endswith(".default-release"):
-            return ospath.join(profile_path, entry)
-    return None
-
-
-def __win_default_firefox_profile_path() -> str:
-    profile_path = ospath.join(getenv("APPDATA"), "Mozilla", "Firefox", "Profiles")
-    for entry in listdir(profile_path):
-        if entry.endswith(".default-release"):
-            return ospath.join(profile_path, entry)
-    return None
-
-
-def __get_default_firefox_profile() -> str:
-    if sys_name() == "Windows":
-        return __win_default_firefox_profile_path
-    elif sys_name() == "Linux":
-        return __linux_default_firefox_profile_path()
-    return ""
+from selgym import (
+    cleanup_resources,
+    get_firefox_options,
+    get_firefox_webdriver,
+    get_default_firefox_profile,
+)
 
 
 @dataclass(frozen=True)
@@ -133,18 +39,17 @@ def get_session_data(profile: str = "", quiet: bool = False) -> SessionData | No
 
     base_url = "https://claude.ai/chats"
     if not profile:
-        profile = __get_default_firefox_profile()
+        profile = get_default_firefox_profile()
 
     if not quiet:
         print(f"\nRetrieving {base_url} session cookie from {profile}")
 
-    __cleanup_resources()
-    opts = __get_firefox_options(firefox_profile=profile, headless=True)
-    driver = __get_firefox_webdriver(options=opts)
+    opts = get_firefox_options(firefox_profile=profile, headless=True)
+    driver = get_firefox_webdriver(options=opts)
     try:
         driver.get(base_url)
 
-        driver.implicitly_wait(2)
+        driver.implicitly_wait(10)
         user_agent = driver.execute_script("return navigator.userAgent")
         if not user_agent:
             raise RuntimeError("Cannot retrieve UserAgent...")
@@ -157,4 +62,4 @@ def get_session_data(profile: str = "", quiet: bool = False) -> SessionData | No
         return SessionData(cookie_string, user_agent)
     finally:
         driver.quit()
-        __cleanup_resources()
+        cleanup_resources()

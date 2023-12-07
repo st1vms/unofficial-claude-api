@@ -16,7 +16,7 @@ with open(
 
 setup(
     name="unofficial-claude2-api",
-    version="0.2.2",
+    version="0.2.3",
     author="st1vms",
     author_email="stefano.maria.salvatore@gmail.com",
     description=__DESCRIPTION,
@@ -31,9 +31,8 @@ setup(
     ],
     python_requires=">=3.9",
     install_requires=[
+        "selgym",
         "curl_cffi",
-        "selenium",
-        "screeninfo",
         "tzlocal",
         "brotli",
     ],

@@ -13,10 +13,6 @@
 
 - [Troubleshooting](#troubleshooting)
 
-- [Disclaimer](#disclaimer)
-
-- [Donating](#donating)
-
 ## What is this?
 
 This unofficial Python API provides access to the conversational capabilities of Anthropic's Claude AI through a simple chat messaging interface.
@@ -164,7 +160,7 @@ Here's an example of this json:
             "attachments": []
         },
         {
-            "uuid": "MessageUUID",
+            "uuid": "<MessageUUID>",
             "text": "<Claude response's text>",
             "sender": "assistant",
             "index": 1,
@@ -216,6 +212,8 @@ client = ClaudeAPIClient(session, proxy=http_proxy)
 ______
 
 ## TROUBLESHOOTING
+
+\****This bug should be already fixed after version 0.2.2***\*
 
 This api will sometime return a 403 status_code when calling `send_message`, when this happens it is recommeded to look for these things:
 
