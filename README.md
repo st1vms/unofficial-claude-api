@@ -61,12 +61,12 @@ pip uninstall unofficial-claude2-api
 ## Example Usage
 
 ```python
-from .client import (
+from claude2_api.client import (
     ClaudeAPIClient,
     SendMessageResponse,
     MessageRateLimitError,
 )
-from .session import SessionData, get_session_data
+from claude2_api.session import SessionData, get_session_data
 
 # Wildcard import will also work the same as above
 # from claude2_api import *
