@@ -78,12 +78,13 @@ FILEPATH_LIST = [
 ]
 
 # This function will automatically retrieve a SessionData instance using selenium
+# It will auto gather cookie session, user agent and organization ID.
 # Omitting profile argument will use default Firefox profile
-data: SessionData = get_session_data()
+session: SessionData = get_session_data()
 
 # Initialize a client instance using a session
 # Optionally change the requests timeout parameter to best fit your needs...default to 240 seconds.
-client = ClaudeAPIClient(data, timeout=240)
+client = ClaudeAPIClient(session, timeout=240)
 
 # Create a new chat and cache the chat_id
 chat_id = client.create_chat()
@@ -185,7 +186,11 @@ from claude2_api.session import SessionData
 cookie_header_value = "The entire Cookie header value string when you visit https://claude.ai/chats"
 user_agent = "User agent to use, required"
 
-data = SessionData(cookie_header_value, user_agent)
+# You can retrieve this string from /api/organizations endpoint
+# If omitted or None it will be auto retrieved when instantiating ClaudeAPIClient
+organization_id = "<org_uuid>"
+
+session = SessionData(cookie_header_value, user_agent, organization_id)
 ```
 
 ### How to set HTTP/S proxy
@@ -204,7 +209,7 @@ http_proxy = HTTPProxy(
     use_ssl=False           # Set to True if proxy uses HTTPS schema
 )
 
-# session = ...
+# session = SessionData(...)
 # Give the proxy instance to ClaudeAPIClient constructor, along with session data.
 client = ClaudeAPIClient(session, proxy=http_proxy)
 ```

@@ -126,7 +126,9 @@ class ClaudeAPIClient:
         ):
             raise ValueError("Invalid SessionData argument!")
 
-        self.organization_id = self.__get_organization_id()
+        if self.__session.organization_id is None:
+            print("\nRetrieving organization ID...")
+            self.__session.organization_id = self.__get_organization_id()
 
         # Retrieve timezone string
         self.timezone = get_localzone().key
@@ -258,7 +260,7 @@ class ClaudeAPIClient:
         with open(fpath, "rb") as fp:
             files = {
                 "file": (ospath.basename(fpath), fp, content_type),
-                "orgUuid": (self.organization_id,),
+                "orgUuid": (self.__session.organization_id,),
             }
 
             response = http_post(
@@ -300,7 +302,7 @@ class ClaudeAPIClient:
         """
         Create new chat and return chat UUID string if successfull
         """
-        url = f"{self.__BASE_URL}/api/organizations/{self.organization_id}/chat_conversations"
+        url = f"{self.__BASE_URL}/api/organizations/{self.__session.organization_id}/chat_conversations"
         new_uuid = str(uuid4())
 
         payload = dumps(
@@ -343,7 +345,7 @@ class ClaudeAPIClient:
         """
         Delete chat by its UUID string, returns True if successfull, False otherwise
         """
-        url = f"https://claude.ai/api/organizations/{self.organization_id}/chat_conversations/{chat_id}"
+        url = f"https://claude.ai/api/organizations/{self.__session.organization_id}/chat_conversations/{chat_id}"
 
         payload = f'"{chat_id}"'
         headers = {
@@ -379,7 +381,7 @@ class ClaudeAPIClient:
         """
         Retrieve a list with all created chat UUID strings, empty list if no chat is found.
         """
-        url = f"{self.__BASE_URL}/api/organizations/{self.organization_id}/chat_conversations"
+        url = f"{self.__BASE_URL}/api/organizations/{self.__session.organization_id}/chat_conversations"
 
         headers = {
             "Host": "claude.ai",
@@ -414,7 +416,7 @@ class ClaudeAPIClient:
         """
         Print JSON response from calling `/api/organizations/{organization_id}/chat_conversations/{chat_id}`
         """
-        url = f"{self.__BASE_URL}/api/organizations/{self.organization_id}/chat_conversations/{chat_id}"
+        url = f"{self.__BASE_URL}/api/organizations/{self.__session.organization_id}/chat_conversations/{chat_id}"
 
         headers = {
             "Host": "claude.ai",
@@ -488,7 +490,7 @@ class ClaudeAPIClient:
                     "timezone": self.timezone,
                     "model": "claude-2.1",
                 },
-                "organization_uuid": self.organization_id,
+                "organization_uuid": self.__session.organization_id,
                 "conversation_uuid": chat_id,
                 "text": prompt,
                 "attachments": attachments,
