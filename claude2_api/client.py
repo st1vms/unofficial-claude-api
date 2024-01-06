@@ -11,6 +11,7 @@ from datetime import datetime
 from mimetypes import guess_type
 from zlib import decompress as zlib_decompress
 from zlib import MAX_WBITS
+from requests import Request, Session
 from curl_cffi.requests import Response
 from curl_cffi.requests import get as http_get
 from curl_cffi.requests import post as http_post
@@ -231,7 +232,7 @@ class ClaudeAPIClient:
         mime_type, _ = guess_type(f"file.{extension}")
         return mime_type or "application/octet-stream"
 
-    def __prepare_file_attachment(self, fpath: str, chat_id: str) -> dict | None:
+    def __prepare_file_attachment(self, fpath: str) -> dict | None:
         content_type = self.__get_content_type(fpath)
         if content_type == "text/plain":
             return self.__prepare_text_file_attachment(fpath)
@@ -244,9 +245,7 @@ class ClaudeAPIClient:
             "Accept": "*/*",
             "Accept-Language": "en-US,en;q=0.5",
             "Accept-Encoding": "gzip, deflate, br",
-            "Content-Type": "application/json",
-            "Content-Length": f"{ospath.getsize(fpath)}",
-            "Referer": f"{self.__BASE_URL}/chat/{chat_id}",
+            "Referer": f"{self.__BASE_URL}/chats",
             "Origin": self.__BASE_URL,
             "DNT": "1",
             "Sec-Fetch-Dest": "empty",
@@ -260,16 +259,15 @@ class ClaudeAPIClient:
         with open(fpath, "rb") as fp:
             files = {
                 "file": (ospath.basename(fpath), fp, content_type),
-                "orgUuid": (self.__session.organization_id,),
+                "orgUuid": (None, self.__session.organization_id),
             }
 
-            response = http_post(
-                url,
-                headers=headers,
-                files=files,
+            s = Session()
+            req = s.prepare_request(Request("POST", url, headers=headers, files=files))
+            response = s.send(
+                req,
                 proxies=self.__get_proxy(),
                 timeout=self.timeout,
-                impersonate="chrome110",
             )
             if response.status_code == 200:
                 return response.json()
@@ -475,7 +473,7 @@ class ClaudeAPIClient:
             attachments = [
                 a
                 for a in [
-                    self.__prepare_file_attachment(path, chat_id)
+                    self.__prepare_file_attachment(path)
                     for path in attachment_paths
                 ]
                 if a
