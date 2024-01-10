@@ -105,7 +105,11 @@ class ClaudeAPIClient:
     __BASE_URL = "https://claude.ai"
 
     def __init__(
-        self, session: SessionData, proxy: HTTPProxy = None, timeout: float = 240
+        self,
+        session: SessionData,
+        proxy: HTTPProxy = None,
+        model_name: str = "claude-2.1",
+        timeout: float = 240,
     ) -> None:
         """
         Constructs a `ClaudeAPIClient` instance using provided `SessionData`,
@@ -117,6 +121,12 @@ class ClaudeAPIClient:
         Raises `ValueError` in case of failure
 
         """
+        if model_name not in {"claude-2.0", "claude-2.1"}:
+            raise ValueError(
+                "model_name must be either one of 'claude-2.0' or 'claude-2.1' strings"
+            )
+
+        self.model_name = model_name
         self.timeout = timeout
         self.proxy = proxy
         self.__session = session
@@ -473,8 +483,7 @@ class ClaudeAPIClient:
             attachments = [
                 a
                 for a in [
-                    self.__prepare_file_attachment(path)
-                    for path in attachment_paths
+                    self.__prepare_file_attachment(path) for path in attachment_paths
                 ]
                 if a
             ]
@@ -486,7 +495,7 @@ class ClaudeAPIClient:
                 "completion": {
                     "prompt": prompt,
                     "timezone": self.timezone,
-                    "model": "claude-2.1",
+                    "model": self.model_name,
                 },
                 "organization_uuid": self.__session.organization_id,
                 "conversation_uuid": chat_id,

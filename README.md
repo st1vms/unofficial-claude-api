@@ -122,8 +122,7 @@ for chat in all_chat_ids:
     client.delete_chat(chat)
 
 # Or by using a shortcut utility
-#
-# client.delete_all_chats()
+client.delete_all_chats()
 ```
 
 ## Tips
@@ -201,6 +200,7 @@ If you'd like to set a proxy for all requests, follow this example:
 
 ```py
 from claude2_api.client import HTTPProxy, ClaudeAPIClient
+from claude2_api.session import SessionData
 
 # Create HTTPProxy instance
 http_proxy = HTTPProxy(
@@ -209,9 +209,24 @@ http_proxy = HTTPProxy(
     use_ssl=False           # Set to True if proxy uses HTTPS schema
 )
 
-# session = SessionData(...)
+session = SessionData(...)
+
 # Give the proxy instance to ClaudeAPIClient constructor, along with session data.
 client = ClaudeAPIClient(session, proxy=http_proxy)
+```
+
+### Changing Claude model
+
+In case you have accounts that are unable to migrate to newer models, you can override the `model_name` string parameter of `ClaudeAPIClient` constructor.
+
+```py
+from claude2_api.client import ClaudeAPIClient
+from claude2_api.session import SessionData
+
+session = SessionData(...)
+
+# Defaults to claude-2.1
+client = ClaudeAPIClient(session, model_name="claude-2.0")
 ```
 
 ______
