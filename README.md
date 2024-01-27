@@ -23,8 +23,9 @@ It allows for:
 
 - Creating chat sessions with Claude and getting chat IDs.
 - Sending messages to Claude containing up to 5 attachment files (txt, pdf, csv, etc...) 10 MB each.
-- Retrieving chat message history.
+- Retrieving chat message history, accessing specific chat conversations.
 - Deleting old chats when they are no longer needed.
+- Sending requests through proxies.
 
 ### Some of the key things you can do with Claude through this API
 
@@ -51,7 +52,7 @@ pip uninstall unofficial-claude2-api
 
 ## Requirements
 
-### These requirements are needed to auto retrieve session cookie and UserAgent using selenium
+### These requirements are needed to auto retrieve a SessionData object using selenium
 
 - Firefox installed, and with at least one profile logged into [Claude](https://claude.ai/chats).
 - [geckodriver](https://github.com/mozilla/geckodriver/releases) installed inside a folder registered in PATH environment variable.
@@ -61,17 +62,18 @@ pip uninstall unofficial-claude2-api
 ## Example Usage
 
 ```python
+from sys import exit as sys_exit
 from claude2_api.client import (
     ClaudeAPIClient,
     SendMessageResponse,
-    MessageRateLimitError,
 )
 from claude2_api.session import SessionData, get_session_data
+from claude2_api.errors import ClaudeAPIError, MessageRateLimitError, OverloadError
 
 # Wildcard import will also work the same as above
 # from claude2_api import *
 
-# List of attachments filepaths, up to 5, max 20 MB each
+# List of attachments filepaths, up to 5, max 10 MB each
 FILEPATH_LIST = [
     "test1.txt",
     "test2.txt",
@@ -80,7 +82,9 @@ FILEPATH_LIST = [
 # This function will automatically retrieve a SessionData instance using selenium
 # It will auto gather cookie session, user agent and organization ID.
 # Omitting profile argument will use default Firefox profile
-session: SessionData = get_session_data()
+session: SessionData = get_session_data(
+    profile="/home/st1v/.mozilla/firefox/j2lzzsg2.python"
+)
 
 # Initialize a client instance using a session
 # Optionally change the requests timeout parameter to best fit your needs...default to 240 seconds.
@@ -92,7 +96,7 @@ if not chat_id:
     # This will not throw MessageRateLimitError
     # But it still means that account has no more messages left.
     print("\nMessage limit hit, cannot create chat...")
-    quit()
+    sys_exit(1)
 
 try:
     # Used for sending message with or without attachments
@@ -104,13 +108,18 @@ try:
     if res.answer:
         print(res.answer)
     else:
-        # Inspect response status code and error string
-        print(f"\nError code {res.status_code}, response -> {res.error_response}")
-except MessageRateLimitError as e:
-    # The exception will hold these informations about the rate limit:
-    print(f"\nMessage limit hit, resets at {e.reset_date}")
-    print(f"\n{e.sleep_sec} seconds left until -> {e.reset_timestamp}")
-    quit()
+        # Inspect response status code and raw answer bytes
+        print(f"\nError code {res.status_code}, raw_answer: {res.raw_answer}")
+except ClaudeAPIError as e:
+    # Identify the error
+    if isinstance(e, MessageRateLimitError):
+        # The exception will hold these informations about the rate limit:
+        print(f"\nMessage limit hit, resets at {e.reset_date}")
+        print(f"\n{e.sleep_sec} seconds left until -> {e.reset_timestamp}")
+    elif isinstance(e, OverloadError):
+        print(f"\nOverloaded error: {e}")
+    else:
+        print(f"\nGot unknown Claude error: {e}")
 finally:
     # Perform chat deletion for cleanup
     client.delete_chat(chat_id)
@@ -123,6 +132,7 @@ for chat in all_chat_ids:
 
 # Or by using a shortcut utility
 client.delete_all_chats()
+sys_exit(0)
 ```
 
 ## Tips
@@ -233,13 +243,21 @@ ______
 
 ## TROUBLESHOOTING
 
-\****This bug should be already fixed after version 0.2.2***\*
+Some common errors that may arise during the usage of this API:
 
-This api will sometime return a 403 status_code when calling `send_message`, when this happens it is recommeded to look for these things:
+- *Error [400]* (Unable to prepare file attachment):
 
-- Check if your IP location is allowed, should be in US/UK, other locations may work sporadically.
+    To fix this error, change the extension of the attachment file to something like .txt, since by default this api will fallback to octet-stream for unknown file extensions, Claude may reject the file data.
 
-- Don't try to send the same prompt/file over and over again, instead wait for some time, and change input.
+- *Error [403]*:
+
+    \****This bug should be already fixed after version 0.2.2***\*
+
+    This api will sometime return a 403 status_code when calling `send_message`, when this happens it is recommeded to look for these things:
+
+    Check if your IP location is allowed, should be in US/UK, other locations may work sporadically.
+
+    Don't try to send the same prompt/file over and over again, instead wait for some time, and change input.
 
 ## DISCLAIMER
 
