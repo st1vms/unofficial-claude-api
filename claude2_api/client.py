@@ -1,24 +1,21 @@
 """Client module"""
 
 from os import path as ospath
-from re import sub
-from typing import Optional
+from re import sub, search
 from dataclasses import dataclass
-from json import dumps, loads, JSONDecodeError
+from json import dumps, loads
 from uuid import uuid4
-from time import time
-from datetime import datetime
 from mimetypes import guess_type
 from zlib import decompress as zlib_decompress
 from zlib import MAX_WBITS
-from requests import Request, Session
-from curl_cffi.requests import Response
+from brotli import decompress as br_decompress
+from tzlocal import get_localzone
+from requests import post as requests_post
 from curl_cffi.requests import get as http_get
 from curl_cffi.requests import post as http_post
 from curl_cffi.requests import delete as http_delete
-from tzlocal import get_localzone
-from brotli import decompress as br_decompress
 from .session import SessionData
+from .errors import ClaudeAPIError, MessageRateLimitError, OverloadError
 
 
 @dataclass(frozen=True)
@@ -29,48 +26,16 @@ class SendMessageResponse:
 
     answer: str
     """
-    The response string or None, in case of errors check the `status_code` and `error_response` fields
+    The response string, if None check the `status_code` and `raw_answer` fields for errors
     """
     status_code: int
     """
     Response status code integer
     """
-    error_response: str
+    raw_answer: bytes
     """
-    Error response string, useful for inspections
+    Raw response bytes returned from send_message POST request, useful for error inspections
     """
-
-
-class MessageRateLimitError(Exception):
-    """Exception for MessageRateLimit
-    Will hold three variables:
-
-    - `reset_timestamp`: Timestamp in seconds at which the rate limit expires.
-
-    - `reset_date`: Formatted datetime string (%Y-%m-%d %H:%M:%S) at which the rate limit expires.
-
-    - `sleep_sec`: Amount of seconds to wait before reaching the expiration timestamp
-    (Auto calculated based on reset_timestamp)"""
-
-    def __init__(self, reset_timestamp: int, *args: object) -> None:
-        super().__init__(*args)
-        self.reset_timestamp: int = reset_timestamp
-        """
-        The timestamp in seconds when the message rate limit will be reset
-        """
-        self.reset_date: str = datetime.fromtimestamp(reset_timestamp).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-        """
-        Formatted datetime string of expiration timestamp in the format %Y-%m-%d %H:%M:%S
-        """
-
-    @property
-    def sleep_sec(self) -> int:
-        """
-        The amount of seconds to wait before reaching the reset_timestamp
-        """
-        return int(abs(time() - self.reset_timestamp)) + 1
 
 
 @dataclass
@@ -87,9 +52,9 @@ class HTTPProxy:
     NOTE: This proxy must not require user/passwd authentication!
     """
 
-    proxy_ip: str
-    proxy_port: int
-    use_ssl: Optional[bool] = False
+    proxy_ip: str = None
+    proxy_port: int = None
+    use_ssl: bool = False
 
 
 class ClaudeAPIClient:
@@ -99,7 +64,8 @@ class ClaudeAPIClient:
 
     - `session`: SessionData class holding session cookie and UserAgent.
     - `proxy` (Optional): HTTPProxy class holding the proxy IP:port configuration.
-    - `timeout`(Optional): Timeout in seconds to wait for each request to complete. Defaults to 240 seconds.
+    - `timeout`(Optional): Timeout in seconds to wait for each request to complete.
+    Defaults to 240 seconds.
     """
 
     __BASE_URL = "https://claude.ai"
@@ -147,49 +113,11 @@ class ClaudeAPIClient:
     def __get_proxy(self) -> dict[str, str] | None:
         if not self.proxy or not self.proxy.proxy_ip or not self.proxy.proxy_port:
             return None
-
+        a, b, c = self.proxy.use_ssl, self.proxy.proxy_ip, self.proxy.proxy_port
         return {
-            "http": f"{'https' if self.proxy.use_ssl else 'http'}://{self.proxy.proxy_ip}:{self.proxy.proxy_port}",
-            "https": f"{'https' if self.proxy.use_ssl else 'http'}://{self.proxy.proxy_ip}:{self.proxy.proxy_port}",
+            "http": f"{'https' if a else 'http'}://{b}:{c}",
+            "https": f"{'https' if a else 'http'}://{b}:{c}",
         }
-
-    def __decode_response(
-        self, response: Response, return_json: bool = False
-    ) -> str | bytes:
-        """Decompress encoded response
-
-        Returns `Response.json()` if `return_json==True`,
-        `Response.content` otherwise.
-        """
-
-        if return_json:
-            try:
-                return response.json()
-            except (JSONDecodeError, TypeError):
-                pass
-
-        if "Content-Encoding" not in response.headers:
-            return response.content
-
-        try:
-            return response.content
-        except (UnicodeDecodeError, UnicodeError):
-            pass
-
-        if response.headers["Content-Encoding"] == "gzip":
-            # Content is gzip-encoded, decode it using zlib
-            res = zlib_decompress(response.content, MAX_WBITS | 16)
-            return loads(res.decode("utf-8")) if return_json else res
-        elif response.headers["Content-Encoding"] == "deflate":
-            # Content is deflate-encoded, decode it using zlib
-            res = zlib_decompress(response.content, -MAX_WBITS)
-            return loads(res.decode("utf-8")) if return_json else res
-        elif response.headers["Content-Encoding"] == "br":
-            # Content is Brotli-encoded, decode it using the brotli library
-            res = br_decompress(response.content)
-            return loads(res.decode("utf-8")) if return_json else res
-        # Content is either not encoded or with a non supported encoding.
-        return response.content if not return_json else response.json()
 
     def __get_organization_id(self) -> str:
         url = f"{self.__BASE_URL}/api/organizations"
@@ -218,7 +146,7 @@ class ClaudeAPIClient:
             impersonate="chrome110",
         )
         if response.status_code == 200 and response.content:
-            res = self.__decode_response(response, return_json=True)
+            res = response.json()
             if res and "uuid" in res[0]:
                 return res[0]["uuid"]
         raise RuntimeError(f"Cannot retrieve Organization ID!\n{response.text}")
@@ -242,7 +170,7 @@ class ClaudeAPIClient:
         mime_type, _ = guess_type(f"file.{extension}")
         return mime_type or "application/octet-stream"
 
-    def __prepare_file_attachment(self, fpath: str) -> dict | None:
+    def __prepare_file_attachment(self, fpath: str, chat_id: str) -> dict | None:
         content_type = self.__get_content_type(fpath)
         if content_type == "text/plain":
             return self.__prepare_text_file_attachment(fpath)
@@ -255,7 +183,7 @@ class ClaudeAPIClient:
             "Accept": "*/*",
             "Accept-Language": "en-US,en;q=0.5",
             "Accept-Encoding": "gzip, deflate, br",
-            "Referer": f"{self.__BASE_URL}/chats",
+            "Referer": f"{self.__BASE_URL}/chat/{chat_id}",
             "Origin": self.__BASE_URL,
             "DNT": "1",
             "Sec-Fetch-Dest": "empty",
@@ -272,17 +200,18 @@ class ClaudeAPIClient:
                 "orgUuid": (None, self.__session.organization_id),
             }
 
-            s = Session()
-            req = s.prepare_request(Request("POST", url, headers=headers, files=files))
-            response = s.send(
-                req,
-                proxies=self.__get_proxy(),
+            response = requests_post(
+                url,
+                headers=headers,
+                files=files,
                 timeout=self.timeout,
+                proxies=self.__get_proxy(),
             )
             if response.status_code == 200:
                 return response.json()
         print(
             f"\n[{response.status_code}] Unable to prepare file attachment -> {fpath}\n"
+            f"\nReason: {response.text}\n\n"
         )
         return None
 
@@ -303,14 +232,19 @@ class ClaudeAPIClient:
             _size = ospath.getsize(path)
             if _size > __filesize_limit:
                 raise ValueError(
-                    f"Attachment file exceed file size limit by {_size-__filesize_limit} out of 10MB -> {path}"
+                    f"Attachment file exceed file size limit by {_size-__filesize_limit}"
+                    "out of 10MB -> {path}"
                 )
 
     def create_chat(self) -> str | None:
         """
         Create new chat and return chat UUID string if successfull
         """
-        url = f"{self.__BASE_URL}/api/organizations/{self.__session.organization_id}/chat_conversations"
+        url = (
+            f"{self.__BASE_URL}/api/organizations/"
+            f"{self.__session.organization_id}/chat_conversations"
+        )
+
         new_uuid = str(uuid4())
 
         payload = dumps(
@@ -353,7 +287,10 @@ class ClaudeAPIClient:
         """
         Delete chat by its UUID string, returns True if successfull, False otherwise
         """
-        url = f"https://claude.ai/api/organizations/{self.__session.organization_id}/chat_conversations/{chat_id}"
+        url = (
+            f"https://claude.ai/api/organizations/"
+            f"{self.__session.organization_id}/chat_conversations/{chat_id}"
+        )
 
         payload = f'"{chat_id}"'
         headers = {
@@ -389,7 +326,10 @@ class ClaudeAPIClient:
         """
         Retrieve a list with all created chat UUID strings, empty list if no chat is found.
         """
-        url = f"{self.__BASE_URL}/api/organizations/{self.__session.organization_id}/chat_conversations"
+        url = (
+            f"{self.__BASE_URL}/api/organizations/"
+            f"{self.__session.organization_id}/chat_conversations"
+        )
 
         headers = {
             "Host": "claude.ai",
@@ -422,9 +362,14 @@ class ClaudeAPIClient:
 
     def get_chat_data(self, chat_id: str) -> dict:
         """
-        Print JSON response from calling `/api/organizations/{organization_id}/chat_conversations/{chat_id}`
+        Print JSON response from calling
+        `/api/organizations/{organization_id}/chat_conversations/{chat_id}`
         """
-        url = f"{self.__BASE_URL}/api/organizations/{self.__session.organization_id}/chat_conversations/{chat_id}"
+
+        url = (
+            f"{self.__BASE_URL}/api/organizations/"
+            f"{self.__session.organization_id}/chat_conversations/{chat_id}"
+        )
 
         headers = {
             "Host": "claude.ai",
@@ -459,6 +404,69 @@ class ClaudeAPIClient:
         chats = self.get_all_chat_ids()
         return all([self.delete_chat(chat_id) for chat_id in chats])
 
+    def __decode_response(self, buffer: bytes, encoding_header: str) -> bytes:
+        """Return decoded response bytes"""
+
+        if encoding_header == "gzip":
+            # Content is gzip-encoded, decode it using zlib
+            return zlib_decompress(buffer, MAX_WBITS | 16)
+        elif encoding_header == "deflate":
+            # Content is deflate-encoded, decode it using zlib
+            return zlib_decompress(buffer, -MAX_WBITS)
+        elif encoding_header == "br":
+            # Content is Brotli-encoded, decode it using the brotli library
+            return br_decompress(buffer)
+
+        # Content is either not encoded or with a non supported encoding.
+        return buffer
+
+    def __parse_send_message_response(self, data_bytes: bytes) -> str | None:
+        """Return a tuple consisting of (answer, error_string)"""
+
+        # Parse json string lines from raw response string
+        res = data_bytes.decode("utf-8").strip()
+
+        # Removes extre newline separators
+        res = sub("\n+", "\n", res).strip()
+
+        # Get json data lines
+        data_lines = [search(r"\{.*\}", r).group(0) for r in res.splitlines()]
+
+        if not data_lines:
+            # Unable to parse data
+            return None
+
+        completions = []
+
+        for line in data_lines:
+            data_dict: dict = loads(line)
+
+            if "error" in data_dict:
+                if "resets_at" in data_dict["error"]:
+                    # Wrap the rate limit into exception
+                    raise MessageRateLimitError(int(data_dict["error"]["resets_at"]))
+
+                # Get the error type and message
+                error_d = data_dict.get("error", {})
+                error_type = error_d.get("type", "")
+                error_msg = error_d.get("message", "")
+
+                if "overloaded" in error_type:
+                    # Wrap Overload error
+                    raise OverloadError(
+                        f"Claude returned error ({error_msg}): "
+                        "Wait some time for before subsequent requests!"
+                    )
+                # Raise generic error
+                raise ClaudeAPIError(f"Unkown Claude error ({error_type}): {error_msg}")
+
+            # Add the completion string to the answer
+            if "completion" in data_dict:
+                completions.append(data_dict["completion"])
+
+        # Return all of the completion strings joined togheter
+        return "".join(completions).strip()
+
     def send_message(
         self,
         chat_id: str,
@@ -483,7 +491,8 @@ class ClaudeAPIClient:
             attachments = [
                 a
                 for a in [
-                    self.__prepare_file_attachment(path) for path in attachment_paths
+                    self.__prepare_file_attachment(path, chat_id)
+                    for path in attachment_paths
                 ]
                 if a
             ]
@@ -534,26 +543,15 @@ class ClaudeAPIClient:
             impersonate="chrome110",
         )
 
-        if response.status_code == 200 and response.content:
-            # Parse response as UTF-8 text
-            res = self.__decode_response(response)
-            decoded_data = res.decode("utf-8")
-            decoded_data = sub("\n+", "\n", decoded_data).strip()
-            data_strings = decoded_data.split("\n")
-            completions = []
-            for data_string in data_strings:
-                json_str = data_string.lstrip("data:").lstrip().rstrip()
-                # Json conversion
-                data = loads(json_str)
-                if data and "completion" in data:
-                    completions.append(data["completion"])
-            return SendMessageResponse("".join(completions).lstrip().rstrip(), 200, {})
-        elif response.status_code == 429 and response.content:
-            # Rate limit error
-            res = self.__decode_response(response)
-            data = loads(res.decode("utf-8"))
-            if data and "error" in data and "resets_at" in data["error"]:
-                # Wrap the rate limit into exception
-                raise MessageRateLimitError(int(data["error"]["resets_at"]))
+        enc = None
+        if "Content-Encoding" in response.headers:
+            enc = response.headers["Content-Encoding"]
 
-        return SendMessageResponse(None, response.status_code, response.text)
+        # Decrypt encoded response
+        dec = self.__decode_response(response.content, enc)
+
+        return SendMessageResponse(
+            self.__parse_send_message_response(dec),
+            response.status_code,
+            response.content,
+        )

@@ -9,7 +9,7 @@ from selgym.gym import (
     get_default_firefox_profile,
     wait_element_by,
     click_element,
-    By
+    By,
 )
 
 
@@ -32,7 +32,7 @@ class SessionData:
     Browser User agent
     """
 
-    organization_id:Optional[str] = None
+    organization_id: Optional[str] = None
     """
     Claude's account organization ID, will be auto retrieved if None
     """
@@ -80,8 +80,8 @@ def get_session_data(profile: str = "", quiet: bool = False) -> SessionData | No
         pre = wait_element_by(driver, By.CSS_SELECTOR, json_text_csss)
         if pre.text:
             j = json_loads(pre.text)
-            if j and len(j) >= 1 and 'uuid' in j[0]:
-                org_id = j[0]['uuid']
+            if j and len(j) >= 1 and "uuid" in j[0]:
+                org_id = j[0]["uuid"]
 
         return SessionData(cookie_string, user_agent, org_id)
     finally:
