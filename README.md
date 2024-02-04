@@ -82,9 +82,7 @@ FILEPATH_LIST = [
 # This function will automatically retrieve a SessionData instance using selenium
 # It will auto gather cookie session, user agent and organization ID.
 # Omitting profile argument will use default Firefox profile
-session: SessionData = get_session_data(
-    profile="/home/st1v/.mozilla/firefox/j2lzzsg2.python"
-)
+session: SessionData = get_session_data()
 
 # Initialize a client instance using a session
 # Optionally change the requests timeout parameter to best fit your needs...default to 240 seconds.
