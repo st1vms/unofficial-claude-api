@@ -430,7 +430,11 @@ class ClaudeAPIClient:
         res = sub("\n+", "\n", res).strip()
 
         # Get json data lines
-        data_lines = [search(r"\{.*\}", r).group(0) for r in res.splitlines()]
+        data_lines = []
+        for r in res.splitlines():
+            s = search(r"\{.*\}", r)
+            if s is not None:
+                data_lines.append(s.group(0))
 
         if not data_lines:
             # Unable to parse data
@@ -497,19 +501,19 @@ class ClaudeAPIClient:
                 if a
             ]
 
-        url = f"{self.__BASE_URL}/api/append_message"
+        url = (
+            f"{self.__BASE_URL}/api/organizations/"
+            + f"{self.__session.organization_id}/chat_conversations/"
+            + f"{chat_id}/completion"
+        )
 
         payload = dumps(
             {
-                "completion": {
-                    "prompt": prompt,
-                    "timezone": self.timezone,
-                    "model": self.model_name,
-                },
-                "organization_uuid": self.__session.organization_id,
-                "conversation_uuid": chat_id,
-                "text": prompt,
                 "attachments": attachments,
+                "files": [],
+                "model": self.model_name,
+                "prompt": prompt,
+                "timezone": self.timezone,
             },
             indent=None,
             separators=(",", ":"),
