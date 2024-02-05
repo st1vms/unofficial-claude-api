@@ -2,6 +2,7 @@
 
 from os import path as ospath
 from re import sub, search
+from typing import Optional
 from dataclasses import dataclass
 from json import dumps, loads
 from uuid import uuid4
@@ -55,6 +56,7 @@ class HTTPProxy:
     proxy_ip: str = None
     proxy_port: int = None
     use_ssl: bool = False
+    use_socks: Optional[bool] = True
 
 
 class ClaudeAPIClient:
@@ -113,11 +115,15 @@ class ClaudeAPIClient:
     def __get_proxy(self) -> dict[str, str] | None:
         if not self.proxy or not self.proxy.proxy_ip or not self.proxy.proxy_port:
             return None
+
         a, b, c = self.proxy.use_ssl, self.proxy.proxy_ip, self.proxy.proxy_port
-        return {
-            "http": f"{'https' if a else 'http'}://{b}:{c}",
-            "https": f"{'https' if a else 'http'}://{b}:{c}",
-        }
+        if self.proxy.use_socks:
+            return {"https":f"socks://{b}:{c}"}
+        else:          
+            return {
+                "http": f"{'https' if a else 'http'}://{b}:{c}",
+                "https": f"{'https' if a else 'http'}://{b}:{c}",
+            }
 
     def __get_organization_id(self) -> str:
         url = f"{self.__BASE_URL}/api/organizations"
