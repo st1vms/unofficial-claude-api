@@ -4,7 +4,7 @@ from os import path as ospath
 from re import sub, search
 from typing import TypeVar, Annotated
 from dataclasses import dataclass
-from ipaddress import IPv4Address, AddressValueError
+from ipaddress import IPv4Address
 from json import dumps, loads
 from uuid import uuid4
 from mimetypes import guess_type
