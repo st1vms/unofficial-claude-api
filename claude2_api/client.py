@@ -2,8 +2,9 @@
 
 from os import path as ospath
 from re import sub, search
-from typing import Optional
+from typing import TypeVar, Annotated
 from dataclasses import dataclass
+from ipaddress import IPv4Address, AddressValueError
 from json import dumps, loads
 from uuid import uuid4
 from mimetypes import guess_type
@@ -40,7 +41,29 @@ class SendMessageResponse:
 
 
 @dataclass
-class HTTPProxy:
+class ClaudeProxy:
+    """Base class for Claude proxies"""
+
+    proxy_ip: str = None
+    proxy_port: int = None
+
+    def __post_init__(self):
+        if self.proxy_ip is None or self.proxy_port is None:
+            raise ValueError("Both proxy_ip and proxy_port must be set")
+
+        # Check if it is a valid port number
+        if not 0 <= self.proxy_port <= 65535:
+            raise ValueError(f"Invalid proxy port number: {self.proxy_port}")
+
+        # Check if it is a valid ipv4 proxy
+        IPv4Address(self.proxy_ip)
+
+
+ClaudeProxyT = TypeVar("ClaudeProxyT", bound=Annotated[dataclass, ClaudeProxy])
+
+
+@dataclass
+class HTTPProxy(ClaudeProxy):
     """
     Dataclass holding http/s proxy informations:
 
@@ -48,15 +71,37 @@ class HTTPProxy:
 
     `port` -> Proxy port
 
-    `use_ssl` -> Boolean flag to indicate if proxy uses https schema
+    `use_ssl` -> Boolean flag to indicate if this proxy uses https schema
 
     NOTE: This proxy must not require user/passwd authentication!
     """
 
-    proxy_ip: str = None
-    proxy_port: int = None
     use_ssl: bool = False
-    use_socks: Optional[bool] = True
+
+
+@dataclass
+class SOCKSProxy(ClaudeProxy):
+    """
+    Dataclass holding SOCKS proxy informations:
+
+    `ip` -> Proxy IP
+
+    `port` -> Proxy port
+
+    `version_num` -> integer flag indicating which SOCKS proxy version to use,
+    defaults to 4.
+
+    NOTE: This proxy must not require user/passwd authentication!
+    """
+
+    version_num: int = 4
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.version_num not in {4, 5}:
+            raise ValueError(
+                f"Not a valid SOCKS version number, must be 4 or 5, got {self.version_num}"
+            )
 
 
 class ClaudeAPIClient:
@@ -75,7 +120,7 @@ class ClaudeAPIClient:
     def __init__(
         self,
         session: SessionData,
-        proxy: HTTPProxy = None,
+        proxy: ClaudeProxyT = None,
         model_name: str = "claude-2.1",
         timeout: float = 240,
     ) -> None:
@@ -94,10 +139,10 @@ class ClaudeAPIClient:
                 "model_name must be either one of 'claude-2.0' or 'claude-2.1' strings"
             )
 
-        self.model_name = model_name
-        self.timeout = timeout
-        self.proxy = proxy
-        self.__session = session
+        self.model_name: str = model_name
+        self.timeout: float = timeout
+        self.proxy: ClaudeProxyT = proxy
+        self.__session: SessionData = session
         if (
             not self.__session
             or not self.__session.cookie
@@ -110,20 +155,29 @@ class ClaudeAPIClient:
             self.__session.organization_id = self.__get_organization_id()
 
         # Retrieve timezone string
-        self.timezone = get_localzone().key
+        self.timezone: str = get_localzone().key
 
     def __get_proxy(self) -> dict[str, str] | None:
-        if not self.proxy or not self.proxy.proxy_ip or not self.proxy.proxy_port:
+
+        if self.proxy is None or not issubclass(self.proxy.__class__, ClaudeProxy):
             return None
 
-        a, b, c = self.proxy.use_ssl, self.proxy.proxy_ip, self.proxy.proxy_port
-        if self.proxy.use_socks:
-            return {"https":f"socks://{b}:{c}"}
-        else:          
+        ip, port = self.proxy.proxy_ip, self.proxy.proxy_port
+
+        if isinstance(self.proxy, HTTPProxy):
+            # Return HTTP proxy
             return {
-                "http": f"{'https' if a else 'http'}://{b}:{c}",
-                "https": f"{'https' if a else 'http'}://{b}:{c}",
+                "http": f"{'https' if self.proxy.use_ssl else 'http'}://{ip}:{port}",
+                "https": f"{'https' if self.proxy.use_ssl else 'http'}://{ip}:{port}",
             }
+        if isinstance(self.proxy, SOCKSProxy):
+            # Return SOCKS proxy
+            return {
+                "http": f"socks{self.proxy.version_num}://{ip}:{port}",
+                "https": f"socks{self.proxy.version_num}://{ip}:{port}",
+            }
+
+        return None
 
     def __get_organization_id(self) -> str:
         url = f"{self.__BASE_URL}/api/organizations"
