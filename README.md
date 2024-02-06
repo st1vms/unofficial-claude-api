@@ -4,14 +4,15 @@
 ## Table of Contents
 
 - [Installation](#how-to-install)
-
-  - [Requirements](#requirements)
-
+- [Requirements](#requirements)
 - [Example Usage](#example-usage)
-
-  - [Tips](#tips) *(chat-history/sessions/proxies)*
-
+- [Tips](#tips)
+  - [Retrieving Chat History](#retrieving-chat-history)
+  - [Faster Loading](#faster-loading-avoiding-selenium)
+  - [Proxies](#proxies)
+  - [Switching model version](#changing-claude-model)
 - [Troubleshooting](#troubleshooting)
+- [Donating](#donating)
 
 ## What is this?
 
@@ -54,6 +55,7 @@ pip uninstall unofficial-claude2-api
 
 ### These requirements are needed to auto retrieve a SessionData object using selenium
 
+- Python >= 3.10
 - Firefox installed, and with at least one profile logged into [Claude](https://claude.ai/chats).
 - [geckodriver](https://github.com/mozilla/geckodriver/releases) installed inside a folder registered in PATH environment variable.
 
@@ -135,7 +137,7 @@ sys_exit(0)
 
 ## Tips
 
-### How to access specific chat data  ( retrieving chat conversations )
+### Retrieving chat history
 
 ```python
 # A convenience method to access a specific chat conversation is
@@ -182,7 +184,9 @@ Here's an example of this json:
 }
 ```
 
-### How to avoid using selenium ( faster loading )
+__________
+
+### Faster loading, avoiding selenium
 
 If for whatever reason you'd like to avoid auto session gathering using selenium,
 you just need to manually create a `SessionData` class for `ClaudeAPIClient` constructor, like so...
@@ -200,11 +204,15 @@ organization_id = "<org_uuid>"
 session = SessionData(cookie_header_value, user_agent, organization_id)
 ```
 
-### How to set HTTP/S proxy
+__________
+
+### Proxies
 
 ***NOTE ( Only proxies with no user/passwd authentication are supported )***
 
-If you'd like to set a proxy for all requests, follow this example:
+#### How to set HTTP/S proxies
+
+If you'd like to set an HTTP proxy for all requests, follow this example:
 
 ```py
 from claude2_api.client import HTTPProxy, ClaudeAPIClient
@@ -223,6 +231,29 @@ session = SessionData(...)
 client = ClaudeAPIClient(session, proxy=http_proxy)
 ```
 
+#### How to set SOCKS proxies
+
+If you want to opt for SOCKS proxies instead, the procedure is the same, but you need to import the `SOCKSProxy` class instead, configuring it with the version number.
+
+```py
+from claude2_api.client import SOCKSProxy, ClaudeAPIClient
+from claude2_api.session import SessionData
+
+# Create SOCKSProxy instance
+socks_proxy = SOCKSProxy(
+    "the.proxy.ip.addr",    # Proxy IP
+    8080,                   # Proxy port
+    version_num=5           # Either 4 or 5, defaults to 4
+)
+
+session = SessionData(...)
+
+# Give the proxy instance to ClaudeAPIClient constructor as usual
+client = ClaudeAPIClient(session, proxy=socks_proxy)
+```
+
+__________
+
 ### Changing Claude model
 
 In case you have accounts that are unable to migrate to newer models, you can override the `model_name` string parameter of `ClaudeAPIClient` constructor.
@@ -236,8 +267,6 @@ session = SessionData(...)
 # Defaults to claude-2.1
 client = ClaudeAPIClient(session, model_name="claude-2.0")
 ```
-
-______
 
 ## TROUBLESHOOTING
 
