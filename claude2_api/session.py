@@ -80,9 +80,15 @@ def get_session_data(profile: str = "", quiet: bool = False) -> SessionData | No
         pre = wait_element_by(driver, By.CSS_SELECTOR, json_text_csss)
         if pre.text:
             j = json_loads(pre.text)
-            if j and len(j) >= 1 and "uuid" in j[0]:
-                org_id = j[0]["uuid"]
-
+            try:
+                if j and len(j) >= 1 and "uuid" in j[0]:
+                    org_id = j[0]["uuid"]
+            except KeyError:
+                print(
+                    f"\nUnable to retrieve organization_id from profile: {profile}\n"
+                    "Check if this profile is logged into Claude!"
+                )
+                return None
         return SessionData(cookie_string, user_agent, org_id)
     finally:
         driver.quit()
