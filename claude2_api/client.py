@@ -120,8 +120,8 @@ class ClaudeAPIClient:
     def __init__(
         self,
         session: SessionData,
+        model_name: str = None,
         proxy: ClaudeProxyT = None,
-        model_name: str = "claude-2.1",
         timeout: float = 240,
     ) -> None:
         """
@@ -134,9 +134,9 @@ class ClaudeAPIClient:
         Raises `ValueError` in case of failure
 
         """
-        if model_name not in {"claude-2.0", "claude-2.1"}:
+        if model_name is not None and model_name not in {"claude-2.0", "claude-2.1"}:
             raise ValueError(
-                "model_name must be either one of 'claude-2.0' or 'claude-2.1' strings"
+                "model_name must be either None or one of 'claude-2.0' or 'claude-2.1' strings"
             )
 
         self.model_name: str = model_name
@@ -567,14 +567,17 @@ class ClaudeAPIClient:
             + f"{chat_id}/completion"
         )
 
+        payload = {
+            "attachments": attachments,
+            "files": [],
+            "prompt": prompt,
+            "timezone": self.timezone,
+        }
+        if self.model_name is not None:
+            payload["model"] = self.model_name
+
         payload = dumps(
-            {
-                "attachments": attachments,
-                "files": [],
-                "model": self.model_name,
-                "prompt": prompt,
-                "timezone": self.timezone,
-            },
+            payload,
             indent=None,
             separators=(",", ":"),
         )

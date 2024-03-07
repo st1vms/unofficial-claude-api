@@ -256,7 +256,7 @@ __________
 
 ### Changing Claude model
 
-In case you have accounts that are unable to migrate to newer models, you can override the `model_name` string parameter of `ClaudeAPIClient` constructor.
+In case you have accounts that are unable to migrate to latest model, you can override the `model_name` string parameter of `ClaudeAPIClient` constructor.
 
 ```py
 from claude2_api.client import ClaudeAPIClient
@@ -264,7 +264,8 @@ from claude2_api.session import SessionData
 
 session = SessionData(...)
 
-# Defaults to claude-2.1
+# Defaults to None (latest Claude model)
+# Can be either claude-2.0 or claude-2.1
 client = ClaudeAPIClient(session, model_name="claude-2.0")
 ```
 
