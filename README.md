@@ -1,5 +1,5 @@
 
-# unofficial-claude2-api
+# unofficial-claude-api
 
 ## Table of Contents
 
@@ -42,13 +42,13 @@ and more.
 ## How to install
 
 ```shell
-pip install unofficial-claude2-api
+pip install unofficial-claude-api
 ```
 
 ## Uninstallation
 
 ```shell
-pip uninstall unofficial-claude2-api
+pip uninstall unofficial-claude-api
 ```
 
 ## Requirements
@@ -65,15 +65,15 @@ pip uninstall unofficial-claude2-api
 
 ```python
 from sys import exit as sys_exit
-from claude2_api.client import (
+from claude_api.client import (
     ClaudeAPIClient,
     SendMessageResponse,
 )
-from claude2_api.session import SessionData, get_session_data
-from claude2_api.errors import ClaudeAPIError, MessageRateLimitError, OverloadError
+from claude_api.session import SessionData, get_session_data
+from claude_api.errors import ClaudeAPIError, MessageRateLimitError, OverloadError
 
 # Wildcard import will also work the same as above
-# from claude2_api import *
+# from claude_api import *
 
 # List of attachments filepaths, up to 5, max 10 MB each
 FILEPATH_LIST = [
@@ -192,7 +192,7 @@ If for whatever reason you'd like to avoid auto session gathering using selenium
 you just need to manually create a `SessionData` class for `ClaudeAPIClient` constructor, like so...
 
 ```python
-from claude2_api.session import SessionData
+from claude_api.session import SessionData
 
 cookie_header_value = "The entire Cookie header value string when you visit https://claude.ai/chats"
 user_agent = "User agent to use, required"
@@ -215,8 +215,8 @@ __________
 If you'd like to set an HTTP proxy for all requests, follow this example:
 
 ```py
-from claude2_api.client import HTTPProxy, ClaudeAPIClient
-from claude2_api.session import SessionData
+from claude_api.client import HTTPProxy, ClaudeAPIClient
+from claude_api.session import SessionData
 
 # Create HTTPProxy instance
 http_proxy = HTTPProxy(
@@ -236,8 +236,8 @@ client = ClaudeAPIClient(session, proxy=http_proxy)
 If you want to opt for SOCKS proxies instead, the procedure is the same, but you need to import the `SOCKSProxy` class instead, configuring it with the version number.
 
 ```py
-from claude2_api.client import SOCKSProxy, ClaudeAPIClient
-from claude2_api.session import SessionData
+from claude_api.client import SOCKSProxy, ClaudeAPIClient
+from claude_api.session import SessionData
 
 # Create SOCKSProxy instance
 socks_proxy = SOCKSProxy(
@@ -259,8 +259,8 @@ __________
 In case you have accounts that are unable to migrate to latest model, you can override the `model_name` string parameter of `ClaudeAPIClient` constructor.
 
 ```py
-from claude2_api.client import ClaudeAPIClient
-from claude2_api.session import SessionData
+from claude_api.client import ClaudeAPIClient
+from claude_api.session import SessionData
 
 session = SessionData(...)
 
