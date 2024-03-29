@@ -265,7 +265,6 @@ from claude_api.session import SessionData
 session = SessionData(...)
 
 # Defaults to None (latest Claude model)
-# Can be either claude-2.0 or claude-2.1
 client = ClaudeAPIClient(session, model_name="claude-2.0")
 ```
 
