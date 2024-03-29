@@ -134,10 +134,6 @@ class ClaudeAPIClient:
         Raises `ValueError` in case of failure
 
         """
-        if model_name is not None and model_name not in {"claude-2.0", "claude-2.1"}:
-            raise ValueError(
-                "model_name must be either None or one of 'claude-2.0' or 'claude-2.1' strings"
-            )
 
         self.model_name: str = model_name
         self.timeout: float = timeout
