@@ -231,7 +231,7 @@ class ClaudeAPIClient:
         if content_type == "text/plain":
             return self.__prepare_text_file_attachment(fpath)
 
-        url = f"{self.__BASE_URL}/api/convert_document"
+        url = f"{self.__BASE_URL}/api/{self.__session.organization_id}/upload"
 
         headers = {
             "Host": "claude.ai",
@@ -264,7 +264,9 @@ class ClaudeAPIClient:
                 proxies=self.__get_proxy(),
             )
             if response.status_code == 200:
-                return response.json()
+                res = response.json()
+                if "file_uuid" in res:
+                    return res["file_uuid"]
         print(
             f"\n[{response.status_code}] Unable to prepare file attachment -> {fpath}\n"
             f"\nReason: {response.text}\n\n"
@@ -548,14 +550,8 @@ class ClaudeAPIClient:
 
         attachments = []
         if attachment_paths:
-            attachments = [
-                a
-                for a in [
-                    self.__prepare_file_attachment(path, chat_id)
-                    for path in attachment_paths
-                ]
-                if a
-            ]
+            for path in attachment_paths:
+                attachments.append(self.__prepare_file_attachment(path, chat_id))
 
         url = (
             f"{self.__BASE_URL}/api/organizations/"
@@ -564,11 +560,20 @@ class ClaudeAPIClient:
         )
 
         payload = {
-            "attachments": attachments,
+            "attachments": [],
             "files": [],
             "prompt": prompt,
             "timezone": self.timezone,
         }
+
+        for a in attachments:
+            if isinstance(a, dict):
+                # Text file attachment
+                payload["attachments"].append(a)
+            elif isinstance(a, str):
+                # Other files uploaded
+                payload["files"].append(a)
+
         if self.model_name is not None:
             payload["model"] = self.model_name
 
