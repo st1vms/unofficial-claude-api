@@ -10,7 +10,7 @@
   - [Retrieving Chat History](#retrieving-chat-history)
   - [Faster Loading](#faster-loading-avoiding-selenium)
   - [Proxies](#proxies)
-  - [Switching model version](#changing-claude-model)
+  - [Changing model version](#changing-claude-model)
 - [Troubleshooting](#troubleshooting)
 - [Donating](#donating)
 
@@ -256,7 +256,7 @@ __________
 
 ### Changing Claude model
 
-In case you have accounts that are unable to migrate to latest model, you can override the `model_name` string parameter of `ClaudeAPIClient` constructor.
+In case you'd like to change the model used, or you do have accounts that are unable to migrate to latest model, you can override the `model_name` string parameter of `ClaudeAPIClient` constructor like so:
 
 ```py
 from claude_api.client import ClaudeAPIClient
@@ -267,6 +267,8 @@ session = SessionData(...)
 # Defaults to None (latest Claude model)
 client = ClaudeAPIClient(session, model_name="claude-2.0")
 ```
+
+You can retrieve the `model_name` strings from the [official API docs](https://docs.anthropic.com/claude/docs/models-overview#model-recommendations)
 
 ## TROUBLESHOOTING
 
