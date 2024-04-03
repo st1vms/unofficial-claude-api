@@ -268,7 +268,7 @@ session = SessionData(...)
 client = ClaudeAPIClient(session, model_name="claude-2.0")
 ```
 
-You can retrieve the `model_name` strings from the [official API docs](https://docs.anthropic.com/claude/docs/models-overview#model-recommendations)
+You can retrieve the `model_name` strings from the [official API docs](https://docs.anthropic.com/claude/docs/models-overview#model-comparison)
 
 ## TROUBLESHOOTING
 
