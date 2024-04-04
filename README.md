@@ -23,7 +23,7 @@ While not officially supported by Anthropic, this library can enable interesting
 It allows for:
 
 - Creating chat sessions with Claude and getting chat IDs.
-- Sending messages to Claude containing up to 5 attachment files (txt, pdf, csv, etc...) 10 MB each.
+- Sending messages to Claude containing up to 5 attachment files (txt, pdf, csv, png, jpeg, etc...) 10 MB each, images are also supported!
 - Retrieving chat message history, accessing specific chat conversations.
 - Deleting old chats when they are no longer needed.
 - Sending requests through proxies.
@@ -38,6 +38,8 @@ and more.
 - Generate summaries from long text or documents. Just give the filepath as an attachment to Claude and get back a concise summary.
 
 - Receive thoughtful responses to open-ended prompts and ideas. Claude can brainstorm ideas, expand on concepts, and have philosophical discussions.
+
+- Send images and let Claude analyze them for you.
 
 ## How to install
 
