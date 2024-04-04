@@ -10,7 +10,7 @@
   - [Retrieving Chat History](#retrieving-chat-history)
   - [Faster Loading](#faster-loading-avoiding-selenium)
   - [Proxies](#proxies)
-  - [Switching model version](#changing-claude-model)
+  - [Changing model version](#changing-claude-model)
 - [Troubleshooting](#troubleshooting)
 - [Donating](#donating)
 
@@ -23,7 +23,7 @@ While not officially supported by Anthropic, this library can enable interesting
 It allows for:
 
 - Creating chat sessions with Claude and getting chat IDs.
-- Sending messages to Claude containing up to 5 attachment files (txt, pdf, csv, etc...) 10 MB each.
+- Sending messages to Claude containing up to 5 attachment files (txt, pdf, csv, png, jpeg, etc...) 10 MB each, images are also supported!
 - Retrieving chat message history, accessing specific chat conversations.
 - Deleting old chats when they are no longer needed.
 - Sending requests through proxies.
@@ -38,6 +38,8 @@ and more.
 - Generate summaries from long text or documents. Just give the filepath as an attachment to Claude and get back a concise summary.
 
 - Receive thoughtful responses to open-ended prompts and ideas. Claude can brainstorm ideas, expand on concepts, and have philosophical discussions.
+
+- Send images and let Claude analyze them for you.
 
 ## How to install
 
@@ -256,7 +258,7 @@ __________
 
 ### Changing Claude model
 
-In case you have accounts that are unable to migrate to latest model, you can override the `model_name` string parameter of `ClaudeAPIClient` constructor.
+In case you'd like to change the model used, or you do have accounts that are unable to migrate to latest model, you can override the `model_name` string parameter of `ClaudeAPIClient` constructor like so:
 
 ```py
 from claude_api.client import ClaudeAPIClient
@@ -265,9 +267,10 @@ from claude_api.session import SessionData
 session = SessionData(...)
 
 # Defaults to None (latest Claude model)
-# Can be either claude-2.0 or claude-2.1
 client = ClaudeAPIClient(session, model_name="claude-2.0")
 ```
+
+You can retrieve the `model_name` strings from the [official API docs](https://docs.anthropic.com/claude/docs/models-overview#model-comparison)
 
 ## TROUBLESHOOTING
 
