@@ -616,7 +616,16 @@ class ClaudeAPIClient:
             enc = response.headers["Content-Encoding"]
 
         # Decrypt encoded response
-        dec = self.__decode_response(response.content, enc)
+        try:
+            dec = self.__decode_response(response.content, enc)
+        except Exception as e:
+            # Return raw response for inspection
+            print(f"Exception decoding from {enc}: {e}")
+            return SendMessageResponse(
+                response.content, # better than None?
+                response.status_code,
+                response.content,
+            )
 
         return SendMessageResponse(
             self.__parse_send_message_response(dec),
