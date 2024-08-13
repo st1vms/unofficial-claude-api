@@ -10,7 +10,7 @@ from uuid import uuid4
 from mimetypes import guess_type
 from zlib import decompress as zlib_decompress
 from zlib import MAX_WBITS
-from brotli import decompress as br_decompress
+#from brotli import decompress as br_decompress
 from tzlocal import get_localzone
 from requests import post as requests_post
 from curl_cffi.requests import get as http_get
@@ -468,12 +468,14 @@ class ClaudeAPIClient:
         if encoding_header == "gzip":
             # Content is gzip-encoded, decode it using zlib
             return zlib_decompress(buffer, MAX_WBITS | 16)
-        elif encoding_header == "deflate":
+        if encoding_header == "deflate":
             # Content is deflate-encoded, decode it using zlib
             return zlib_decompress(buffer, -MAX_WBITS)
-        elif encoding_header == "br":
+
+        # DROPPING BROTLI DECODING
+        #if encoding_header == "br":
             # Content is Brotli-encoded, decode it using the brotli library
-            return br_decompress(buffer)
+        #    return br_decompress(buffer)
 
         # Content is either not encoded or with a non supported encoding.
         return buffer
@@ -622,7 +624,7 @@ class ClaudeAPIClient:
             # Return raw response for inspection
             print(f"Exception decoding from {enc}: {e}")
             return SendMessageResponse(
-                response.content, # better than None?
+                None,
                 response.status_code,
                 response.content,
             )
