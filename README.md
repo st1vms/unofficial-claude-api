@@ -11,6 +11,7 @@
   - [Faster Loading](#faster-loading-avoiding-selenium)
   - [Proxies](#proxies)
   - [Changing model version](#changing-claude-model)
+  - [Changing Organization](#changing-organization)
 - [Troubleshooting](#troubleshooting)
 - [Donating](#donating)
 
@@ -271,6 +272,24 @@ client = ClaudeAPIClient(session, model_name="claude-2.0")
 ```
 
 You can retrieve the `model_name` strings from the [official API docs](https://docs.anthropic.com/claude/docs/models-overview#model-comparison)
+
+__________
+
+### Changing Organization
+
+As reported in issue [#23](https://github.com/st1vms/unofficial-claude-api/issues/23)
+if you're encountering 403 errors when using Selenium to auto retrieve a `SessionData` class and your account has multiple organizations,
+you may want to override the default organization retrieved.
+
+By default `get_session_data` retrieves the last organization from the result array found [here](https://claude.ai/api/organizations).
+You can override the index to fetch by using parameter `organization_index`:
+
+```py
+from claude_api.session import get_session_data
+
+# Defaults to -1 (last entry)
+session = get_session_data(organization_index=-1)
+```
 
 ## TROUBLESHOOTING
 
