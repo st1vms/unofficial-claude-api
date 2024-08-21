@@ -38,13 +38,16 @@ class SessionData:
     """
 
 
-def get_session_data(profile: str = "", quiet: bool = False) -> SessionData | None:
+def get_session_data(profile: str = "", quiet: bool = False, organization_index:int=-1) -> SessionData | None:
     """
     Retrieves Claude session data
 
     This function requires a profile with Claude login and geckodriver installed!
 
     The default Firefox profile will be used, if the profile argument was not overwrited.
+
+    Parameter `organization_index` is by default -1
+    (last entry from https://claude.ai/api/organizations)
     """
 
     json_tab_id = 'a[id="rawdata-tab"]'
@@ -81,8 +84,8 @@ def get_session_data(profile: str = "", quiet: bool = False) -> SessionData | No
         if pre.text:
             j = json_loads(pre.text)
             try:
-                if j and len(j) >= 1 and "uuid" in j[0]:
-                    org_id = j[0]["uuid"]
+                if j and len(j) > organization_index and "uuid" in j[organization_index]:
+                    org_id = j[organization_index]["uuid"]
             except KeyError:
                 print(
                     f"\nUnable to retrieve organization_id from profile: {profile}\n"

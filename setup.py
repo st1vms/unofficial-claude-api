@@ -16,7 +16,7 @@ with open(
 
 setup(
     name="unofficial-claude-api",
-    version="0.3.2",
+    version="0.3.3",
     author="st1vms",
     author_email="stefano.maria.salvatore@gmail.com",
     description=__DESCRIPTION,
@@ -35,6 +35,6 @@ setup(
         "selgym",
         "curl_cffi",
         "tzlocal",
-        "brotli",
+        #"brotli",
     ],
 )
