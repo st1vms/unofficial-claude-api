@@ -225,6 +225,8 @@ from claude_api.session import SessionData
 http_proxy = HTTPProxy(
     "the.proxy.ip.addr",    # Proxy IP
     8080,                   # Proxy port
+    "username",             # Proxy Username (optional)
+    "password",             # Proxy Password (optional)
     use_ssl=False           # Set to True if proxy uses HTTPS schema
 )
 
