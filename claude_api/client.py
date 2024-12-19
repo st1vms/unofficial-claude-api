@@ -2,7 +2,7 @@
 
 from os import path as ospath
 from re import sub, search
-from typing import TypeVar, Annotated
+from typing import TypeVar, Annotated, Optional
 from dataclasses import dataclass
 from ipaddress import IPv4Address
 from json import dumps, loads
@@ -10,7 +10,8 @@ from uuid import uuid4
 from mimetypes import guess_type
 from zlib import decompress as zlib_decompress
 from zlib import MAX_WBITS
-#from brotli import decompress as br_decompress
+
+# from brotli import decompress as br_decompress
 from tzlocal import get_localzone
 from requests import post as requests_post
 from curl_cffi.requests import get as http_get
@@ -46,16 +47,23 @@ class ClaudeProxy:
 
     proxy_ip: str = None
     proxy_port: int = None
+    proxy_username: Optional[str] = None
+    proxy_password: Optional[str] = None
 
     def __post_init__(self):
         if self.proxy_ip is None or self.proxy_port is None:
             raise ValueError("Both proxy_ip and proxy_port must be set")
+        
+        try:
+            port = int(self.proxy_port)
+        except ValueError:
+            raise ValueError("proxy_port must be an integer")
+        
+        if not 0 <= port <= 65535:
+            raise ValueError(f"Invalid proxy port number: {port}")
+        
+        self.proxy_port = port
 
-        # Check if it is a valid port number
-        if not 0 <= self.proxy_port <= 65535:
-            raise ValueError(f"Invalid proxy port number: {self.proxy_port}")
-
-        # Check if it is a valid ipv4 proxy
         IPv4Address(self.proxy_ip)
 
 
@@ -99,9 +107,7 @@ class SOCKSProxy(ClaudeProxy):
     def __post_init__(self):
         super().__post_init__()
         if self.version_num not in {4, 5}:
-            raise ValueError(
-                f"Not a valid SOCKS version number, must be 4 or 5, got {self.version_num}"
-            )
+            raise ValueError(f"Invalid SOCKS version number: {self.version_num}")
 
 
 class ClaudeAPIClient:
@@ -154,23 +160,26 @@ class ClaudeAPIClient:
         self.timezone: str = get_localzone().key
 
     def __get_proxy(self) -> dict[str, str] | None:
-
-        if self.proxy is None or not issubclass(self.proxy.__class__, ClaudeProxy):
+        if self.proxy is None or not isinstance(self.proxy, ClaudeProxy):
             return None
 
         ip, port = self.proxy.proxy_ip, self.proxy.proxy_port
+        auth = ""
+        if self.proxy.proxy_username and self.proxy.proxy_password:
+            auth = f"{self.proxy.proxy_username}:{self.proxy.proxy_password}@"
 
         if isinstance(self.proxy, HTTPProxy):
-            # Return HTTP proxy
+            scheme = "https" if self.proxy.use_ssl else "http"
+            proxy_url = f"{scheme}://{auth}{ip}:{port}"
             return {
-                "http": f"{'https' if self.proxy.use_ssl else 'http'}://{ip}:{port}",
-                "https": f"{'https' if self.proxy.use_ssl else 'http'}://{ip}:{port}",
+                "http": proxy_url,
+                "https": proxy_url,
             }
         if isinstance(self.proxy, SOCKSProxy):
-            # Return SOCKS proxy
+            proxy_url = f"socks{self.proxy.version_num}://{auth}{ip}:{port}"
             return {
-                "http": f"socks{self.proxy.version_num}://{ip}:{port}",
-                "https": f"socks{self.proxy.version_num}://{ip}:{port}",
+                "http": proxy_url,
+                "https": proxy_url,
             }
 
         return None
@@ -473,8 +482,8 @@ class ClaudeAPIClient:
             return zlib_decompress(buffer, -MAX_WBITS)
 
         # DROPPING BROTLI DECODING
-        #if encoding_header == "br":
-            # Content is Brotli-encoded, decode it using the brotli library
+        # if encoding_header == "br":
+        # Content is Brotli-encoded, decode it using the brotli library
         #    return br_decompress(buffer)
 
         # Content is either not encoded or with a non supported encoding.
