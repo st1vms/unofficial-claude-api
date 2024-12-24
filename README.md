@@ -211,8 +211,6 @@ __________
 
 ### Proxies
 
-***NOTE ( Only proxies with no user/passwd authentication are supported )***
-
 #### How to set HTTP/S proxies
 
 If you'd like to set an HTTP proxy for all requests, follow this example:
@@ -225,6 +223,8 @@ from claude_api.session import SessionData
 http_proxy = HTTPProxy(
     "the.proxy.ip.addr",    # Proxy IP
     8080,                   # Proxy port
+    "username",             # Proxy Username (optional)
+    "password",             # Proxy Password (optional)
     use_ssl=False           # Set to True if proxy uses HTTPS schema
 )
 
