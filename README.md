@@ -211,8 +211,6 @@ __________
 
 ### Proxies
 
-***NOTE ( Only proxies with no user/passwd authentication are supported )***
-
 #### How to set HTTP/S proxies
 
 If you'd like to set an HTTP proxy for all requests, follow this example:

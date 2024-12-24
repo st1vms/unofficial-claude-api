@@ -53,15 +53,15 @@ class ClaudeProxy:
     def __post_init__(self):
         if self.proxy_ip is None or self.proxy_port is None:
             raise ValueError("Both proxy_ip and proxy_port must be set")
-        
+
         try:
             port = int(self.proxy_port)
-        except ValueError:
-            raise ValueError("proxy_port must be an integer")
-        
+        except ValueError as e:
+            raise ValueError("proxy_port must be an integer") from e
+
         if not 0 <= port <= 65535:
             raise ValueError(f"Invalid proxy port number: {port}")
-        
+
         self.proxy_port = port
 
         IPv4Address(self.proxy_ip)
@@ -80,8 +80,6 @@ class HTTPProxy(ClaudeProxy):
     `port` -> Proxy port
 
     `use_ssl` -> Boolean flag to indicate if this proxy uses https schema
-
-    NOTE: This proxy must not require user/passwd authentication!
     """
 
     use_ssl: bool = False
@@ -98,8 +96,6 @@ class SOCKSProxy(ClaudeProxy):
 
     `version_num` -> integer flag indicating which SOCKS proxy version to use,
     defaults to 4.
-
-    NOTE: This proxy must not require user/passwd authentication!
     """
 
     version_num: int = 4
@@ -160,7 +156,7 @@ class ClaudeAPIClient:
         self.timezone: str = get_localzone().key
 
     def __get_proxy(self) -> dict[str, str] | None:
-        if self.proxy is None or not isinstance(self.proxy, ClaudeProxy):
+        if self.proxy is None or not issubclass(self.proxy.__class__, ClaudeProxy):
             return None
 
         ip, port = self.proxy.proxy_ip, self.proxy.proxy_port
