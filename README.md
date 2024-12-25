@@ -79,10 +79,7 @@ from claude_api.errors import ClaudeAPIError, MessageRateLimitError, OverloadErr
 # from claude_api import *
 
 # List of attachments filepaths, up to 5, max 10 MB each
-FILEPATH_LIST = [
-    "test1.txt",
-    "test2.txt",
-]
+FILEPATH_LIST = ["test.txt"]
 
 # This function will automatically retrieve a SessionData instance using selenium
 # It will auto gather cookie session, user agent and organization ID.
@@ -246,6 +243,8 @@ from claude_api.session import SessionData
 socks_proxy = SOCKSProxy(
     "the.proxy.ip.addr",    # Proxy IP
     8080,                   # Proxy port
+    "username",             # Proxy Username (optional)
+    "password",             # Proxy Password (optional)
     version_num=5           # Either 4 or 5, defaults to 4
 )
 
