@@ -7,6 +7,7 @@
 - [Requirements](#requirements)
 - [Example Usage](#example-usage)
 - [Tips](#tips)
+  - [Response Styles](#response-styles)
   - [Retrieving Chat History](#retrieving-chat-history)
   - [Faster Loading](#faster-loading-avoiding-selenium)
   - [Proxies](#proxies)
@@ -136,6 +137,19 @@ sys_exit(0)
 ```
 
 ## Tips
+
+### Response styles
+
+After version 0.3.4 there is the ability to customize the response style using one of these four attributes: `normal`, `concise`, `explanatory`, `formal`.
+
+You can specify one of these attributes in the `send_message` method, which by default uses normal style:
+
+```py
+# Omitt style argument to use the default normal response style
+client.send_message(
+    chat_id, "Hello!", style='formal'
+)
+```
 
 ### Retrieving chat history
 
