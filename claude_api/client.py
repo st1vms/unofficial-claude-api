@@ -18,6 +18,7 @@ from curl_cffi.requests import get as http_get
 from curl_cffi.requests import post as http_post
 from curl_cffi.requests import delete as http_delete
 from .session import SessionData
+from .styles import NORMAL_STYLE, CONCISE_STYLE, EXPLANATORY_STYLE, FORMAL_STYLE
 from .errors import ClaudeAPIError, MessageRateLimitError, OverloadError
 
 
@@ -541,11 +542,15 @@ class ClaudeAPIClient:
         chat_id: str,
         prompt: str,
         attachment_paths: list[str] = None,
+        style: str = "normal",
     ) -> SendMessageResponse:
         """
         Send message to `chat_id` using specified `prompt` string.
 
         You can omitt or provide an attachments path list using `attachment_paths`
+
+        List of available response styles (default normal):
+        - `normal`, `concise`, `explanatory`, `formal`
 
         Returns a `SendMessageResponse` instance, having:
         - `answer` string field,
@@ -569,6 +574,7 @@ class ClaudeAPIClient:
         payload = {
             "attachments": [],
             "files": [],
+            "personalized_styles": [],
             "prompt": prompt,
             "timezone": self.timezone,
         }
@@ -581,6 +587,20 @@ class ClaudeAPIClient:
                 # Other files uploaded
                 payload["files"].append(a)
 
+        # Apply style
+        if style == "normal":
+            payload["personalized_styles"].append(NORMAL_STYLE)
+        elif style == "concise":
+            payload["personalized_styles"].append(CONCISE_STYLE)
+        elif style == "explanatory":
+            payload["personalized_styles"].append(EXPLANATORY_STYLE)
+        elif style == "formal":
+            payload["personalized_styles"].append(FORMAL_STYLE)
+        else:
+            # Unknown style
+            payload["personalized_styles"].append(NORMAL_STYLE)
+
+        # NOTE Model parameter may be removed in the future
         if self.model_name is not None:
             payload["model"] = self.model_name
 
