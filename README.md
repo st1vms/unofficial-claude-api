@@ -6,14 +6,14 @@
 - [Installation](#how-to-install)
 - [Requirements](#requirements)
 - [Example Usage](#example-usage)
-- [Tips](#tips)
-  - [Response Styles](#response-styles)
+- [Advanced Usage](#advanced-usage)
   - [Retrieving Chat History](#retrieving-chat-history)
-  - [Faster Loading](#faster-loading-avoiding-selenium)
-  - [Proxies](#proxies)
-  - [Changing model version](#changing-claude-model)
-  - [Changing Organization](#changing-organization)
-- [Troubleshooting](#troubleshooting)
+  - [Manual Session Data (Faster Loading)](#manual-session-data)
+  - [Using Proxies](#using-proxies)
+  - [Customization](#customization)
+    - [Changing model version](#changing-claude-model)
+    - [Changing Organization](#changing-organization)
+- [How to Contribute](#how-to-contribute)
 - [Donating](#donating)
 
 ## What is this?
@@ -80,7 +80,10 @@ from claude_api.errors import ClaudeAPIError, MessageRateLimitError, OverloadErr
 # from claude_api import *
 
 # List of attachments filepaths, up to 5, max 10 MB each
-FILEPATH_LIST = ["test.txt"]
+FILEPATH_LIST = [] #["test.txt"]
+
+# Text message to send
+PROMPT = "Hello!"
 
 # This function will automatically retrieve a SessionData instance using selenium
 # It will auto gather cookie session, user agent and organization ID.
@@ -97,13 +100,13 @@ if not chat_id:
     # This will not throw MessageRateLimitError
     # But it still means that account has no more messages left.
     print("\nMessage limit hit, cannot create chat...")
-    sys_exit(1)
+    sys_exit(-1)
 
 try:
     # Used for sending message with or without attachments
     # Returns a SendMessageResponse instance
     res: SendMessageResponse = client.send_message(
-        chat_id, "Hello!", attachment_paths=FILEPATH_LIST
+        chat_id, PROMPT, attachment_paths=FILEPATH_LIST
     )
     # Inspect answer
     if res.answer:
@@ -125,6 +128,8 @@ finally:
     # Perform chat deletion for cleanup
     client.delete_chat(chat_id)
 
+## (OPTIONAL) 
+
 # Get a list of all chats ids
 all_chat_ids = client.get_all_chat_ids()
 # Delete all chats
@@ -132,24 +137,10 @@ for chat in all_chat_ids:
     client.delete_chat(chat)
 
 # Or by using a shortcut utility
-client.delete_all_chats()
-sys_exit(0)
+# client.delete_all_chats()
 ```
 
-## Tips
-
-### Response styles
-
-After version 0.3.4 there is the ability to customize the response style using one of these four attributes: `normal`, `concise`, `explanatory`, `formal`.
-
-You can specify one of these attributes in the `send_message` method, which by default uses normal style:
-
-```py
-# Omitt style argument to use the default normal response style
-client.send_message(
-    chat_id, "Hello!", style='formal'
-)
-```
+## Advanced Usage
 
 ### Retrieving chat history
 
@@ -200,7 +191,7 @@ Here's an example of this json:
 
 __________
 
-### Faster loading, avoiding selenium
+### Manual Session Data
 
 If for whatever reason you'd like to avoid auto session gathering using selenium,
 you just need to manually create a `SessionData` class for `ClaudeAPIClient` constructor, like so...
@@ -220,7 +211,7 @@ session = SessionData(cookie_header_value, user_agent, organization_id)
 
 __________
 
-### Proxies
+### Using Proxies
 
 #### How to set HTTP/S proxies
 
@@ -270,6 +261,8 @@ client = ClaudeAPIClient(session, proxy=socks_proxy)
 
 __________
 
+## Customization
+
 ### Changing Claude model
 
 In case you'd like to change the model used, or you do have accounts that are unable to migrate to latest model, you can override the `model_name` string parameter of `ClaudeAPIClient` constructor like so:
@@ -304,30 +297,31 @@ from claude_api.session import get_session_data
 session = get_session_data(organization_index=-1)
 ```
 
-## TROUBLESHOOTING
+## How to Contribute
 
-Some common errors that may arise during the usage of this API:
+Contributions are welcome, please follow these guidelines to contribute:
 
-- *Error [400]* (Unable to prepare file attachment):
+1. **Fork the repository** and create a new branch for your feature or fix.
 
-    To fix this error, change the extension of the attachment file to something like .txt, since by default this api will fallback to octet-stream for unknown file extensions, Claude may reject the file data.
+2. **Make your changes**. Ensure the code is clean, well-documented, and consistent with the existing style.
 
-- *Error [403]*:
+3. **Test your changes** before submitting. Also include unit tests in your pull request where appropriate.
 
-    \****This bug should be already fixed after version 0.2.2***\*
+5. **Create a pull request** to the latest `dev-*` branch. Include a clear description of your changes.
 
-    This api will sometime return a 403 status_code when calling `send_message`, when this happens it is recommeded to look for these things:
+### Notes
+- Stick to the current architecture and avoid unnecessary dependencies.
+- If the change involves significant refactoring or bug fixes, open an issue first to discuss it.
+- Ensure any modified or new code is covered by tests with reproducible results.
 
-    Check if your IP location is allowed, should be in US/UK, other locations may work sporadically.
+All contributions must respect the licensing terms in the repository.
 
-    Don't try to send the same prompt/file over and over again, instead wait for some time, and change input.
-
-## DISCLAIMER
+## Disclaimer
 
 This repository provides an unofficial API for automating free accounts on [claude.ai](https://claude.ai/chats).
 Please note that this API is not endorsed, supported, or maintained by Anthropic. Use it at your own discretion and risk. Anthropic may make changes to their official product or APIs at any time, which could affect the functionality of this unofficial API. We do not guarantee the accuracy, reliability, or security of the information and data retrieved using this API. By using this repository, you agree that the maintainers are not responsible for any damages, issues, or consequences that may arise from its usage. Always refer to Anthropic's official documentation and terms of use. This project is maintained independently by contributors who are not affiliated with Anthropic.
 
-## DONATING
+## Donations
 
 A huge thank you in advance to anyone who wants to donate :)
 
